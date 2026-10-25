@@ -86,11 +86,41 @@ li .del:hover{color:#c0392b;background:var(--soft)}
 .bar div{height:100%;width:0;background:var(--ok);transition:width .25s}
 #pageChal .card{max-width:560px;margin:0 auto}
 #pageChal .stats{margin-top:14px}
+body,.card,.stat,.chname,.add input,.tab{transition:background-color .3s,border-color .3s,color .3s}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.theme{background:var(--soft);border:1px solid var(--border);border-radius:50%;width:38px;height:38px;font-size:1.1rem;line-height:1;display:flex;align-items:center;justify-content:center;transition:transform .4s}
+.theme:hover{border-color:var(--accent)}
+.theme.spin{transform:rotate(360deg)}
+.day{transition:background-color .15s,transform .15s}
+.day:active{transform:scale(.92)}
+.card .bar{margin:10px 0}
+li label{transition:color .25s}
+@keyframes pop{0%{transform:scale(.8)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+.day.pop{animation:pop .35s ease-out}
+@keyframes slidein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+li.new{animation:slidein .3s ease-out}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fade{animation:fade .3s ease-out}
+#splash{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);animation:sp-out .5s ease 1.9s forwards}
+@keyframes sp-out{to{opacity:0;visibility:hidden}}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes sp-in{to{opacity:1}}
+.sp-c{fill:none;stroke:var(--accent);stroke-width:3;stroke-dasharray:164;stroke-dashoffset:164;animation:draw .9s ease forwards}
+.sp-p{fill:none;stroke:var(--ok);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40;animation:draw .5s ease .8s forwards}
+.sp-t{font-size:1.3rem;font-weight:600;letter-spacing:.02em;opacity:0;animation:sp-in .6s ease 1s forwards}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}#splash{display:none}}
 </style>
 </head>
 <body>
+<div id="splash" aria-hidden="true">
+  <svg viewBox="0 0 64 64" width="72" height="72"><circle class="sp-c" cx="32" cy="32" r="26" transform="rotate(-90 32 32)"/><path class="sp-p" d="M20 33l8 8 16-17"/></svg>
+  <div class="sp-t">Планер</div>
+</div>
 <div class="wrap">
-  <h1>Планер</h1>
+  <div class="top">
+    <h1>Планер</h1>
+    <button class="theme" id="themeBtn" aria-label="Сменить тему">☾</button>
+  </div>
   <nav class="tabs" role="tablist">
     <button class="tab on" id="tabPlan" role="tab" aria-selected="true">Задачи</button>
     <button class="tab" id="tabChal" role="tab" aria-selected="false">Испытание месяца</button>
@@ -115,8 +145,8 @@ li .del:hover{color:#c0392b;background:var(--soft)}
         <span><i style="border-color:var(--accent)"></i>Сегодня</span>
       </div>
       <div class="stats">
-        <div class="stat"><b id="stDone">0</b><span>задач выполнено в месяце</span></div>
-        <div class="stat"><b id="stDays">0</b><span>дней полностью закрыто</span></div>
+        <div class="stat"><b id="stDone">0%</b><span id="stDoneSub">задач выполнено</span></div>
+        <div class="stat"><b id="stDays">0%</b><span id="stDaysSub">дней закрыто</span></div>
       </div>
     </section>
 
@@ -126,6 +156,7 @@ li .del:hover{color:#c0392b;background:var(--soft)}
         <input id="newTask" type="text" maxlength="120" placeholder="Новая задача" autocomplete="off">
         <button id="addBtn">Добавить</button>
       </div>
+      <div class="bar"><div id="dayBar"></div></div>
       <ul id="list"></ul>
       <div class="empty" id="empty">На этот день задач нет. Добавьте первую.</div>
       <div class="foot">
@@ -153,7 +184,7 @@ li .del:hover{color:#c0392b;background:var(--soft)}
       <div class="dow" id="chDow"></div>
       <div class="days" id="chDays"></div>
       <div class="stats">
-        <div class="stat"><b id="stChDone">0</b><span>дней выполнено</span></div>
+        <div class="stat"><b id="stChDone">0%</b><span id="stChSub">0 из 0 дней</span></div>
         <div class="stat"><b id="stChStreak">0</b><span>текущая серия</span></div>
         <div class="stat"><b id="stChBest">0</b><span>лучшая серия</span></div>
       </div>
@@ -198,19 +229,21 @@ li .del:hover{color:#c0392b;background:var(--soft)}
     var count=new Date(viewY,viewM+1,0).getDate();
     var html="", i;
     for(i=0;i<offset;i++) html+='<button class="day out" tabindex="-1" aria-hidden="true"></button>';
-    var doneTotal=0, daysClosed=0;
+    var doneTotal=0, daysClosed=0, totalTasks=0, daysPlanned=0;
     for(var d=1; d<=count; d++){
       var k=key(viewY,viewM,d), t=tasksOf(k), st=status(k);
       var done=t.filter(function(x){return x.d;}).length;
-      doneTotal+=done; if(st==="all") daysClosed++;
+      doneTotal+=done; totalTasks+=t.length; if(t.length) daysPlanned++; if(st==="all") daysClosed++;
       var cls="day"+(st?" "+st:"")+(k===todayKey?" today":"")+(k===sel?" sel":"");
-      var label=t.length?done+"/"+t.length:"";
+      var label=t.length?pct(done,t.length)+"%":"";
       html+='<button class="'+cls+'" data-k="'+k+'" aria-label="'+d+" "+MONTHS_GEN[viewM]+(t.length?", выполнено "+done+" из "+t.length:"")+'">'
         +d+(label?"<small>"+label+"</small>":"")+"</button>";
     }
     $("days").innerHTML=html;
-    $("stDone").textContent=doneTotal;
-    $("stDays").textContent=daysClosed;
+    $("stDone").textContent=pct(doneTotal,totalTasks)+"%";
+    $("stDoneSub").textContent=doneTotal+" из "+totalTasks+" задач";
+    $("stDays").textContent=pct(daysClosed,daysPlanned)+"%";
+    $("stDaysSub").textContent=daysClosed+" из "+daysPlanned+" дней закрыто";
   }
 
   function renderDay(){
@@ -220,8 +253,12 @@ li .del:hover{color:#c0392b;background:var(--soft)}
     ul.innerHTML="";
     t.forEach(function(task){
       var li=document.createElement("li"); if(task.d) li.className="done";
+      if(task.id===lastNew){ li.classList.add("new"); lastNew=null; }
       var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!task.d; cb.id="t"+task.id;
-      cb.addEventListener("change",function(){ task.d=cb.checked; save(); render(); });
+      cb.addEventListener("change",function(){
+        task.d=cb.checked; save(); render();
+        if(status(sel)==="all"){ var el=document.querySelector('#days [data-k="'+sel+'"]'); if(el) el.classList.add("pop"); }
+      });
       var lb=document.createElement("label"); lb.htmlFor=cb.id; lb.textContent=task.t;
       var del=document.createElement("button"); del.className="del"; del.textContent="×"; del.setAttribute("aria-label","Удалить задачу");
       del.addEventListener("click",function(){
@@ -233,7 +270,8 @@ li .del:hover{color:#c0392b;background:var(--soft)}
     });
     $("empty").style.display=t.length?"none":"block";
     var done=t.filter(function(x){return x.d;}).length;
-    $("dayStat").textContent=t.length?"Выполнено "+done+" из "+t.length:"";
+    $("dayStat").textContent=t.length?pct(done,t.length)+"% · "+done+" из "+t.length:"";
+    $("dayBar").style.width=pct(done,t.length)+"%";
     $("clearDay").style.display=t.length?"inline":"none";
   }
 
@@ -243,7 +281,7 @@ li .del:hover{color:#c0392b;background:var(--soft)}
     var inp=$("newTask"), text=inp.value.trim();
     if(!text) { inp.focus(); return; }
     var id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-    (store[sel]=tasksOf(sel)).push({id:id,t:text,d:false});
+    (store[sel]=tasksOf(sel)).push({id:id,t:text,d:false}); lastNew=id;
     inp.value=""; save(); render(); inp.focus();
   }
 
@@ -261,6 +299,28 @@ li .del:hover{color:#c0392b;background:var(--soft)}
   $("clearDay").addEventListener("click",function(){
     if(confirm("Удалить все задачи этого дня?")){ delete store[sel]; save(); render(); }
   });
+
+  /* ---------- Тема, проценты, заставка ---------- */
+  var lastNew=null;
+  function pct(a,b){ return b?Math.round(a/b*100):0; }
+  var root=document.documentElement;
+  function curTheme(){
+    var t=root.getAttribute("data-theme"); if(t) return t;
+    return (window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";
+  }
+  function setTheme(t,persist){
+    root.setAttribute("data-theme",t);
+    $("themeBtn").textContent=t==="dark"?"☀":"☾";
+    if(persist){ try{ localStorage.setItem("planner:theme",t); }catch(e){} }
+  }
+  var savedTheme=null; try{ savedTheme=localStorage.getItem("planner:theme"); }catch(e){}
+  setTheme(savedTheme||curTheme(),false);
+  $("themeBtn").addEventListener("click",function(){
+    var b=this; b.classList.add("spin");
+    setTimeout(function(){ b.classList.remove("spin"); },400);
+    setTheme(curTheme()==="dark"?"light":"dark",true);
+  });
+  $("splash").addEventListener("click",function(){ this.style.display="none"; });
 
   /* ---------- Испытание месяца ---------- */
   var CKEY="planner:challenges:v1";
@@ -293,7 +353,8 @@ li .del:hover{color:#c0392b;background:var(--soft)}
     var last=isCur?now.getDate():count, s=0, x=last;
     if(isCur && !c.done[last]) x=last-1;
     while(x>=1 && c.done[x]){ s++; x--; }
-    $("stChDone").textContent=done+" из "+count;
+    $("stChDone").textContent=pct(done,count)+"%";
+    $("stChSub").textContent=done+" из "+count+" дней";
     $("stChStreak").textContent=s;
     $("stChBest").textContent=best;
     $("chBar").style.width=Math.round(done/count*100)+"%";
@@ -304,6 +365,8 @@ li .del:hover{color:#c0392b;background:var(--soft)}
     $("tabPlan").classList.toggle("on",!chal); $("tabChal").classList.toggle("on",chal);
     $("tabPlan").setAttribute("aria-selected",String(!chal));
     $("tabChal").setAttribute("aria-selected",String(chal));
+    var pg=chal?$("pageChal"):$("pagePlan");
+    pg.classList.remove("fade"); void pg.offsetWidth; pg.classList.add("fade");
     if(chal) renderCh();
   }
   $("tabPlan").addEventListener("click",function(){ showTab(false); });
@@ -313,8 +376,10 @@ li .del:hover{color:#c0392b;background:var(--soft)}
   $("chDays").addEventListener("click",function(e){
     var b=e.target.closest("[data-d]"); if(!b) return;
     var c=chGet(), d=b.getAttribute("data-d");
-    if(c.done[d]) delete c.done[d]; else c.done[d]=1;
+    var was=!!c.done[d];
+    if(was) delete c.done[d]; else c.done[d]=1;
     chSave(); renderCh();
+    if(!was){ var el=document.querySelector('#chDays [data-d="'+d+'"]'); if(el) el.classList.add("pop"); }
   });
   $("chPrev").addEventListener("click",function(){ chM--; if(chM<0){chM=11;chY--;} renderCh(); });
   $("chNext").addEventListener("click",function(){ chM++; if(chM>11){chM=0;chY++;} renderCh(); });
