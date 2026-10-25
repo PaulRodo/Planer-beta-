@@ -109,6 +109,10 @@ li.new{animation:slidein .3s ease-out}
 .sp-p{fill:none;stroke:var(--ok);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40;animation:draw .5s ease .8s forwards}
 .sp-t{font-size:1.3rem;font-weight:600;letter-spacing:.02em;opacity:0;animation:sp-in .6s ease 1s forwards}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}#splash{display:none}}
+.topr{display:flex;align-items:center;gap:8px}
+.sync{background:var(--soft);border:1px solid var(--border);border-radius:19px;padding:8px 12px;font-size:.85rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync:hover:not(:disabled){border-color:var(--accent)}
+.sync:disabled{color:var(--muted);cursor:default}
 </style>
 </head>
 <body>
@@ -119,7 +123,10 @@ li.new{animation:slidein .3s ease-out}
 <div class="wrap">
   <div class="top">
     <h1>Планер</h1>
-    <button class="theme" id="themeBtn" aria-label="Сменить тему">☾</button>
+    <div class="topr">
+      <button class="sync" id="syncBtn" hidden></button>
+      <button class="theme" id="themeBtn" aria-label="Сменить тему">☾</button>
+    </div>
   </div>
   <nav class="tabs" role="tablist">
     <button class="tab on" id="tabPlan" role="tab" aria-selected="true">Задачи</button>
@@ -204,7 +211,7 @@ li.new{animation:slidein .3s ease-out}
   var DOW=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
   var store={};
   try{ store=JSON.parse(localStorage.getItem(KEY)||"{}")||{}; }catch(e){ store={}; }
-  function save(){ try{ localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){} }
+  function save(){ try{ localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){} touch(); }
 
   function pad(n){ return n<10?"0"+n:""+n; }
   function key(y,m,d){ return y+"-"+pad(m+1)+"-"+pad(d); }
@@ -326,7 +333,7 @@ li.new{animation:slidein .3s ease-out}
   var CKEY="planner:challenges:v1";
   var chStore={};
   try{ chStore=JSON.parse(localStorage.getItem(CKEY)||"{}")||{}; }catch(e){ chStore={}; }
-  function chSave(){ try{ localStorage.setItem(CKEY,JSON.stringify(chStore)); }catch(e){} }
+  function chSave(){ try{ localStorage.setItem(CKEY,JSON.stringify(chStore)); }catch(e){} touch(); }
   var chY=now.getFullYear(), chM=now.getMonth();
   function chKey(){ return chY+"-"+pad(chM+1); }
   function chPeek(){ return chStore[chKey()]||{name:"",done:{}}; }
@@ -388,7 +395,151 @@ li.new{animation:slidein .3s ease-out}
     if(confirm("Сбросить все отметки этого месяца?")){ chGet().done={}; chSave(); renderCh(); }
   });
 
+  /* ---------- Синхронизация между устройствами ---------- */
+  // Для входа через Google в браузере вставьте сюда настройки своего Firebase-проекта.
+  // Пока apiKey пустой, вход через Google в браузере отключён. В Telegram настройка не нужна.
+  var FIREBASE_CONFIG={apiKey:"",authDomain:"",projectId:"",appId:""};
+
+  var TG=null, tgCloud=false, fbDb=null, fbUser=null, pushTimer=null, lastPushed={};
+  function getUpdated(){ try{ return +localStorage.getItem("planner:updated")||0; }catch(e){ return 0; } }
+  function touch(){
+    try{ localStorage.setItem("planner:updated",String(Date.now())); }catch(e){}
+    schedulePush();
+  }
+  function localSet(){
+    try{ localStorage.setItem(KEY,JSON.stringify(store)); localStorage.setItem(CKEY,JSON.stringify(chStore)); }catch(e){}
+  }
+  function loadScript(src,ok,fail){
+    var s=document.createElement("script"); s.src=src; s.async=true;
+    s.onload=ok; s.onerror=function(){ if(fail) fail(); };
+    document.head.appendChild(s);
+  }
+  function schedulePush(){
+    if(!tgCloud && !fbUser) return;
+    clearTimeout(pushTimer);
+    pushTimer=setTimeout(function(){ pushTimer=null; cloudPush(); },800);
+  }
+  document.addEventListener("visibilitychange",function(){
+    if(document.hidden && pushTimer){ clearTimeout(pushTimer); pushTimer=null; cloudPush(); }
+  });
+  function cloudPush(){ if(tgCloud) tgPush(); else fbPush(); }
+
+  function hasLocalData(){ return Object.keys(store).length>0 || Object.keys(chStore).length>0; }
+  function applyRemote(r){
+    var lu=getUpdated();
+    if(r && r.updated>lu){
+      store=r.tasks||{}; chStore=r.ch||{}; localSet();
+      try{ localStorage.setItem("planner:updated",String(r.updated)); }catch(e){}
+      render(); renderCh();
+    } else if(hasLocalData() && (!r || lu>(r.updated||0))){
+      cloudPush();
+    }
+  }
+
+  /* Telegram: облако Telegram (CloudStorage). Данные делятся на куски по 10 дней, так как лимит записи — 4096 символов. */
+  function tgChunks(){
+    var out={};
+    Object.keys(store).forEach(function(k){
+      var day=+k.slice(8,10), blk=Math.min(3,Math.floor((day-1)/10)+1), ck="t_"+k.slice(0,7)+"_"+blk;
+      (out[ck]=out[ck]||{})[k]=store[k];
+    });
+    Object.keys(out).forEach(function(ck){ out[ck]=JSON.stringify(out[ck]); });
+    Object.keys(chStore).forEach(function(m){ out["c_"+m]=JSON.stringify(chStore[m]); });
+    return out;
+  }
+  function tgPush(){
+    var cs=TG.CloudStorage, ch=tgChunks(), k;
+    for(k in ch){
+      if(lastPushed[k]!==ch[k] && ch[k].length<=4096){
+        (function(k,v){ cs.setItem(k,v,function(err){ if(!err) lastPushed[k]=v; }); })(k,ch[k]);
+      }
+    }
+    var gone=Object.keys(lastPushed).filter(function(x){ return x!=="meta" && !(x in ch); });
+    if(gone.length) cs.removeItems(gone,function(err){ if(!err) gone.forEach(function(x){ delete lastPushed[x]; }); });
+    var m=String(getUpdated());
+    if(lastPushed.meta!==m) cs.setItem("meta",m,function(err){ if(!err) lastPushed.meta=m; });
+  }
+  function tgPull(done){
+    var cs=TG.CloudStorage;
+    cs.getKeys(function(err,keys){
+      if(err||!keys||!keys.length){ done(null); return; }
+      cs.getItems(keys,function(err2,vals){
+        if(err2||!vals){ done(null); return; }
+        var t={}, c={}, upd=0;
+        keys.forEach(function(k){
+          var v=vals[k]; if(!v) return; lastPushed[k]=v;
+          try{
+            if(k==="meta") upd=+v||0;
+            else if(k.indexOf("t_")===0){ var o=JSON.parse(v); for(var d in o) t[d]=o[d]; }
+            else if(k.indexOf("c_")===0) c[k.slice(2)]=JSON.parse(v);
+          }catch(e){}
+        });
+        done({tasks:t,ch:c,updated:upd});
+      });
+    });
+  }
+  function initTelegram(){
+    loadScript("https://telegram.org/js/telegram-web-app.js",function(){
+      var w=window.Telegram && Telegram.WebApp;
+      if(w && w.initData){
+        TG=w;
+        try{ w.ready(); w.expand(); }catch(e){}
+        if(!savedTheme && w.colorScheme) setTheme(w.colorScheme,false);
+        if(w.isVersionAtLeast && w.isVersionAtLeast("6.9") && w.CloudStorage){
+          tgCloud=true;
+          var b=$("syncBtn"); b.hidden=false; b.disabled=true; b.textContent="☁ Облако Telegram";
+          tgPull(applyRemote);
+        }
+      } else initFirebase();
+    },initFirebase);
+  }
+
+  /* Браузер: вход через Google (Firebase Auth + Firestore). */
+  function setSyncLabel(){
+    if(tgCloud) return;
+    $("syncBtn").textContent=fbUser?"☁ "+((fbUser.email||"").split("@")[0]||"Аккаунт"):"Войти через Google";
+  }
+  function fbPush(){
+    if(!fbDb||!fbUser) return;
+    fbDb.collection("users").doc(fbUser.uid).set({data:JSON.stringify({tasks:store,ch:chStore}),updated:getUpdated()}).catch(function(){});
+  }
+  function fbPull(){
+    fbDb.collection("users").doc(fbUser.uid).get().then(function(s){
+      var r=null;
+      if(s.exists){
+        try{ var o=JSON.parse(s.data().data); r={tasks:o.tasks||{},ch:o.ch||{},updated:s.data().updated||0}; }catch(e){}
+      }
+      applyRemote(r);
+    }).catch(function(){});
+  }
+  function initFirebase(){
+    if(tgCloud || !FIREBASE_CONFIG.apiKey) return;
+    var base="https://www.gstatic.com/firebasejs/10.12.2/";
+    loadScript(base+"firebase-app-compat.js",function(){
+      loadScript(base+"firebase-auth-compat.js",function(){
+        loadScript(base+"firebase-firestore-compat.js",function(){
+          try{
+            firebase.initializeApp(FIREBASE_CONFIG);
+            fbDb=firebase.firestore();
+            $("syncBtn").hidden=false; setSyncLabel();
+            firebase.auth().onAuthStateChanged(function(u){ fbUser=u; setSyncLabel(); if(u) fbPull(); });
+          }catch(e){}
+        });
+      });
+    });
+  }
+  $("syncBtn").addEventListener("click",function(){
+    if(tgCloud || !fbDb) return;
+    if(fbUser){
+      if(confirm("Выйти из аккаунта Google? Данные на этом устройстве останутся.")) firebase.auth().signOut();
+    } else {
+      firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider())
+        .catch(function(e){ alert("Не удалось войти: "+(e&&e.message||e)); });
+    }
+  });
+
   render();
+  initTelegram();
 })();
 </script>
 </body>
