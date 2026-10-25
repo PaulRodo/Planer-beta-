@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Планер задач</title>
+<style>
+:root{
+  --bg:#eef2f1;--surface:#ffffff;--text:#1d2b3a;--muted:#64748b;--border:#d5dde0;
+  --accent:#3558c8;--ok:#1f7a63;--ok-text:#ffffff;--warn:#c98a1b;--soft:#e4ebea;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#121a22;--surface:#1b2631;--text:#e6edf3;--muted:#93a3b5;--border:#2f3d4b;
+    --accent:#7d9bff;--ok:#3fb08f;--ok-text:#0c1a16;--warn:#e0a53a;--soft:#243241;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121a22;--surface:#1b2631;--text:#e6edf3;--muted:#93a3b5;--border:#2f3d4b;
+  --accent:#7d9bff;--ok:#3fb08f;--ok-text:#0c1a16;--warn:#e0a53a;--soft:#243241;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*{box-sizing:border-box}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.45}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 32px}
+h1{font-size:1.5rem;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 18px;font-size:.95rem}
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px}
+.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.head h2{font-size:1.1rem;margin:0}
+.nav{display:flex;gap:6px}
+button{font:inherit;color:inherit;cursor:pointer}
+.nav button,.today-btn{background:var(--soft);border:1px solid var(--border);border-radius:8px;padding:6px 11px}
+.nav button:hover,.today-btn:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dow,.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow span{text-align:center;font-size:.8rem;color:var(--muted);padding-bottom:4px}
+.day{aspect-ratio:1/1;min-height:40px;border:1.5px solid transparent;border-radius:10px;background:transparent;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:.95rem;position:relative}
+.day:hover{background:var(--soft)}
+.day.out{visibility:hidden}
+.day.today{border-color:var(--accent)}
+.day.sel{background:var(--soft);box-shadow:0 0 0 2px var(--accent) inset}
+.day.all{background:var(--ok);color:var(--ok-text);font-weight:600}
+.day.all.sel{box-shadow:0 0 0 2px var(--accent) inset,0 0 0 2px var(--surface) inset}
+.day.part{border-color:var(--warn)}
+.day small{font-size:.65rem;line-height:1;opacity:.85}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:.82rem;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:6px;vertical-align:-1px;border:1.5px solid transparent}
+.stats{display:flex;gap:10px;margin-top:14px}
+.stat{flex:1;background:var(--soft);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-size:1.25rem}
+.stat span{font-size:.8rem;color:var(--muted)}
+.add{display:flex;gap:8px;margin:12px 0}
+.add input{flex:1;min-width:0;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 11px}
+.add button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-weight:600}
+:root[data-theme="dark"] .add button{color:#0c1220}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .add button{color:#0c1220}}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)}
+li:last-child{border-bottom:0}
+li input[type=checkbox]{width:20px;height:20px;accent-color:var(--ok);flex:none;cursor:pointer}
+li label{flex:1;cursor:pointer;word-break:break-word}
+li.done label{color:var(--muted);text-decoration:line-through}
+li .del{background:none;border:0;color:var(--muted);font-size:1.2rem;padding:2px 8px;border-radius:6px}
+li .del:hover{color:#c0392b;background:var(--soft)}
+.empty{color:var(--muted);padding:14px 0 6px;font-size:.95rem}
+.foot{margin-top:14px;display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--muted)}
+.link{background:none;border:0;color:var(--muted);text-decoration:underline;padding:0}
+[hidden]{display:none!important}
+.tabs{display:flex;gap:6px;margin:0 0 16px;border-bottom:1px solid var(--border)}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:9px 14px;color:var(--muted);font-weight:600;margin-bottom:-1px}
+.tab.on{color:var(--text);border-bottom-color:var(--accent)}
+.chlabel{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.chname{width:100%;font:inherit;font-size:1.05rem;font-weight:600;color:inherit;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.bar{height:8px;background:var(--soft);border-radius:99px;overflow:hidden;margin:14px 0}
+.bar div{height:100%;width:0;background:var(--ok);transition:width .25s}
+#pageChal .card{max-width:560px;margin:0 auto}
+#pageChal .stats{margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Планер</h1>
+  <nav class="tabs" role="tablist">
+    <button class="tab on" id="tabPlan" role="tab" aria-selected="true">Задачи</button>
+    <button class="tab" id="tabChal" role="tab" aria-selected="false">Испытание месяца</button>
+  </nav>
+  <div id="pagePlan">
+  <p class="sub">Выберите день, добавьте задачи и отмечайте выполненные. Полностью закрытые дни закрашиваются зелёным.</p>
+  <div class="grid">
+    <section class="card" aria-label="Календарь">
+      <div class="head">
+        <h2 id="monthTitle"></h2>
+        <div class="nav">
+          <button id="prev" aria-label="Предыдущий месяц">‹</button>
+          <button class="today-btn" id="todayBtn">Сегодня</button>
+          <button id="next" aria-label="Следующий месяц">›</button>
+        </div>
+      </div>
+      <div class="dow" id="dow"></div>
+      <div class="days" id="days"></div>
+      <div class="legend">
+        <span><i style="background:var(--ok)"></i>Все задачи выполнены</span>
+        <span><i style="border-color:var(--warn)"></i>Выполнено частично</span>
+        <span><i style="border-color:var(--accent)"></i>Сегодня</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="stDone">0</b><span>задач выполнено в месяце</span></div>
+        <div class="stat"><b id="stDays">0</b><span>дней полностью закрыто</span></div>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Задачи дня">
+      <div class="head"><h2 id="dayTitle"></h2></div>
+      <div class="add">
+        <input id="newTask" type="text" maxlength="120" placeholder="Новая задача" autocomplete="off">
+        <button id="addBtn">Добавить</button>
+      </div>
+      <ul id="list"></ul>
+      <div class="empty" id="empty">На этот день задач нет. Добавьте первую.</div>
+      <div class="foot">
+        <span id="dayStat"></span>
+        <button class="link" id="clearDay">Очистить день</button>
+      </div>
+    </section>
+  </div>
+  </div>
+
+  <div id="pageChal" hidden>
+    <p class="sub">Назовите испытание месяца и отмечайте каждый день, в который вы его выполнили.</p>
+    <section class="card" aria-label="Испытание месяца">
+      <div class="head">
+        <h2 id="chTitle"></h2>
+        <div class="nav">
+          <button id="chPrev" aria-label="Предыдущий месяц">‹</button>
+          <button class="today-btn" id="chToday">Сегодня</button>
+          <button id="chNext" aria-label="Следующий месяц">›</button>
+        </div>
+      </div>
+      <label class="chlabel" for="chName">Испытание</label>
+      <input id="chName" class="chname" type="text" maxlength="80" placeholder="Например: 30 минут зарядки каждый день" autocomplete="off">
+      <div class="bar"><div id="chBar"></div></div>
+      <div class="dow" id="chDow"></div>
+      <div class="days" id="chDays"></div>
+      <div class="stats">
+        <div class="stat"><b id="stChDone">0</b><span>дней выполнено</span></div>
+        <div class="stat"><b id="stChStreak">0</b><span>текущая серия</span></div>
+        <div class="stat"><b id="stChBest">0</b><span>лучшая серия</span></div>
+      </div>
+      <div class="foot">
+        <span>Нажмите на день, чтобы отметить или снять отметку</span>
+        <button class="link" id="chReset">Сбросить месяц</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY="planner:v1";
+  var MONTHS=["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+  var MONTHS_GEN=["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+  var DOW=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+  var store={};
+  try{ store=JSON.parse(localStorage.getItem(KEY)||"{}")||{}; }catch(e){ store={}; }
+  function save(){ try{ localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){} }
+
+  function pad(n){ return n<10?"0"+n:""+n; }
+  function key(y,m,d){ return y+"-"+pad(m+1)+"-"+pad(d); }
+  var now=new Date();
+  var todayKey=key(now.getFullYear(),now.getMonth(),now.getDate());
+  var viewY=now.getFullYear(), viewM=now.getMonth(), sel=todayKey;
+
+  var $=function(id){ return document.getElementById(id); };
+  $("dow").innerHTML=DOW.map(function(d){ return "<span>"+d+"</span>"; }).join("");
+
+  function tasksOf(k){ return store[k]||[]; }
+  function status(k){
+    var t=tasksOf(k); if(!t.length) return "";
+    var done=t.filter(function(x){return x.d;}).length;
+    return done===t.length?"all":(done>0?"part":"todo");
+  }
+
+  function renderCal(){
+    $("monthTitle").textContent=MONTHS[viewM]+" "+viewY;
+    var first=new Date(viewY,viewM,1);
+    var offset=(first.getDay()+6)%7;
+    var count=new Date(viewY,viewM+1,0).getDate();
+    var html="", i;
+    for(i=0;i<offset;i++) html+='<button class="day out" tabindex="-1" aria-hidden="true"></button>';
+    var doneTotal=0, daysClosed=0;
+    for(var d=1; d<=count; d++){
+      var k=key(viewY,viewM,d), t=tasksOf(k), st=status(k);
+      var done=t.filter(function(x){return x.d;}).length;
+      doneTotal+=done; if(st==="all") daysClosed++;
+      var cls="day"+(st?" "+st:"")+(k===todayKey?" today":"")+(k===sel?" sel":"");
+      var label=t.length?done+"/"+t.length:"";
+      html+='<button class="'+cls+'" data-k="'+k+'" aria-label="'+d+" "+MONTHS_GEN[viewM]+(t.length?", выполнено "+done+" из "+t.length:"")+'">'
+        +d+(label?"<small>"+label+"</small>":"")+"</button>";
+    }
+    $("days").innerHTML=html;
+    $("stDone").textContent=doneTotal;
+    $("stDays").textContent=daysClosed;
+  }
+
+  function renderDay(){
+    var p=sel.split("-"), y=+p[0], m=+p[1]-1, d=+p[2];
+    $("dayTitle").textContent=d+" "+MONTHS_GEN[m]+" "+y+(sel===todayKey?" · сегодня":"");
+    var t=tasksOf(sel), ul=$("list");
+    ul.innerHTML="";
+    t.forEach(function(task){
+      var li=document.createElement("li"); if(task.d) li.className="done";
+      var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!task.d; cb.id="t"+task.id;
+      cb.addEventListener("change",function(){ task.d=cb.checked; save(); render(); });
+      var lb=document.createElement("label"); lb.htmlFor=cb.id; lb.textContent=task.t;
+      var del=document.createElement("button"); del.className="del"; del.textContent="×"; del.setAttribute("aria-label","Удалить задачу");
+      del.addEventListener("click",function(){
+        store[sel]=tasksOf(sel).filter(function(x){return x.id!==task.id;});
+        if(!store[sel].length) delete store[sel];
+        save(); render();
+      });
+      li.appendChild(cb); li.appendChild(lb); li.appendChild(del); ul.appendChild(li);
+    });
+    $("empty").style.display=t.length?"none":"block";
+    var done=t.filter(function(x){return x.d;}).length;
+    $("dayStat").textContent=t.length?"Выполнено "+done+" из "+t.length:"";
+    $("clearDay").style.display=t.length?"inline":"none";
+  }
+
+  function render(){ renderCal(); renderDay(); }
+
+  function addTask(){
+    var inp=$("newTask"), text=inp.value.trim();
+    if(!text) { inp.focus(); return; }
+    var id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    (store[sel]=tasksOf(sel)).push({id:id,t:text,d:false});
+    inp.value=""; save(); render(); inp.focus();
+  }
+
+  $("addBtn").addEventListener("click",addTask);
+  $("newTask").addEventListener("keydown",function(e){ if(e.key==="Enter") addTask(); });
+  $("days").addEventListener("click",function(e){
+    var b=e.target.closest("[data-k]"); if(!b) return;
+    sel=b.getAttribute("data-k"); render();
+  });
+  $("prev").addEventListener("click",function(){ viewM--; if(viewM<0){viewM=11;viewY--;} renderCal(); });
+  $("next").addEventListener("click",function(){ viewM++; if(viewM>11){viewM=0;viewY++;} renderCal(); });
+  $("todayBtn").addEventListener("click",function(){
+    viewY=now.getFullYear(); viewM=now.getMonth(); sel=todayKey; render();
+  });
+  $("clearDay").addEventListener("click",function(){
+    if(confirm("Удалить все задачи этого дня?")){ delete store[sel]; save(); render(); }
+  });
+
+  /* ---------- Испытание месяца ---------- */
+  var CKEY="planner:challenges:v1";
+  var chStore={};
+  try{ chStore=JSON.parse(localStorage.getItem(CKEY)||"{}")||{}; }catch(e){ chStore={}; }
+  function chSave(){ try{ localStorage.setItem(CKEY,JSON.stringify(chStore)); }catch(e){} }
+  var chY=now.getFullYear(), chM=now.getMonth();
+  function chKey(){ return chY+"-"+pad(chM+1); }
+  function chPeek(){ return chStore[chKey()]||{name:"",done:{}}; }
+  function chGet(){ var k=chKey(); if(!chStore[k]) chStore[k]={name:"",done:{}}; return chStore[k]; }
+  $("chDow").innerHTML=DOW.map(function(d){ return "<span>"+d+"</span>"; }).join("");
+
+  function renderCh(){
+    $("chTitle").textContent=MONTHS[chM]+" "+chY;
+    var c=chPeek(), nameInp=$("chName");
+    if(document.activeElement!==nameInp) nameInp.value=c.name||"";
+    var count=new Date(chY,chM+1,0).getDate();
+    var offset=(new Date(chY,chM,1).getDay()+6)%7;
+    var isCur=(chY===now.getFullYear()&&chM===now.getMonth());
+    var html="", i, done=0, best=0, run=0;
+    for(i=0;i<offset;i++) html+='<button class="day out" tabindex="-1" aria-hidden="true"></button>';
+    for(var d=1; d<=count; d++){
+      var on=!!c.done[d];
+      if(on){ done++; run++; if(run>best) best=run; } else run=0;
+      var cls="day"+(on?" all":"")+(isCur&&d===now.getDate()?" today":"");
+      html+='<button class="'+cls+'" data-d="'+d+'" aria-pressed="'+on+'" aria-label="'+d+" "+MONTHS_GEN[chM]+(on?", выполнено":", не отмечено")+'">'
+        +d+(on?"<small>✓</small>":"")+"</button>";
+    }
+    $("chDays").innerHTML=html;
+    var last=isCur?now.getDate():count, s=0, x=last;
+    if(isCur && !c.done[last]) x=last-1;
+    while(x>=1 && c.done[x]){ s++; x--; }
+    $("stChDone").textContent=done+" из "+count;
+    $("stChStreak").textContent=s;
+    $("stChBest").textContent=best;
+    $("chBar").style.width=Math.round(done/count*100)+"%";
+  }
+
+  function showTab(chal){
+    $("pagePlan").hidden=chal; $("pageChal").hidden=!chal;
+    $("tabPlan").classList.toggle("on",!chal); $("tabChal").classList.toggle("on",chal);
+    $("tabPlan").setAttribute("aria-selected",String(!chal));
+    $("tabChal").setAttribute("aria-selected",String(chal));
+    if(chal) renderCh();
+  }
+  $("tabPlan").addEventListener("click",function(){ showTab(false); });
+  $("tabChal").addEventListener("click",function(){ showTab(true); });
+
+  $("chName").addEventListener("input",function(){ chGet().name=this.value; chSave(); });
+  $("chDays").addEventListener("click",function(e){
+    var b=e.target.closest("[data-d]"); if(!b) return;
+    var c=chGet(), d=b.getAttribute("data-d");
+    if(c.done[d]) delete c.done[d]; else c.done[d]=1;
+    chSave(); renderCh();
+  });
+  $("chPrev").addEventListener("click",function(){ chM--; if(chM<0){chM=11;chY--;} renderCh(); });
+  $("chNext").addEventListener("click",function(){ chM++; if(chM>11){chM=0;chY++;} renderCh(); });
+  $("chToday").addEventListener("click",function(){ chY=now.getFullYear(); chM=now.getMonth(); renderCh(); });
+  $("chReset").addEventListener("click",function(){
+    if(confirm("Сбросить все отметки этого месяца?")){ chGet().done={}; chSave(); renderCh(); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
