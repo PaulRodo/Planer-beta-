@@ -30,26 +30,29 @@
   --accent:#7d9bff;--ok:#3fb08f;--ok-text:#0c1a16;--warn:#e0a53a;
   color-scheme:dark;
 }
-html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%;overflow-x:hidden;max-width:100%}
 *{box-sizing:border-box}
-body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+body{margin:0;min-height:100%;overflow-x:hidden;max-width:100vw;background:var(--bg);color:var(--text);
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.45}
 .wrap{max-width:980px;margin:0 auto;padding:20px 16px 32px}
 h1{font-size:1.5rem;margin:0 0 4px;letter-spacing:-.01em}
 .sub{color:var(--muted);margin:0 0 18px;font-size:.95rem}
 .grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
-@media (max-width:760px){.grid{grid-template-columns:1fr}}
+@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}}
+.grid>*,.sgrid>*,.chgrid>*,.sgrp>*,.agrid>*{min-width:0}
+.card{min-width:0;max-width:100%}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px}
-.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.head h2{min-width:0}
 .head h2{font-size:1.1rem;margin:0}
 .nav{display:flex;gap:6px}
 button{font:inherit;color:inherit;cursor:pointer}
 .nav button,.today-btn{background:var(--soft);border:1px solid var(--border);border-radius:8px;padding:6px 11px}
 .nav button:hover,.today-btn:hover{border-color:var(--accent)}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.dow,.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow,.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
 .dow span{text-align:center;font-size:.8rem;color:var(--muted);padding-bottom:4px}
-.day{aspect-ratio:1/1;min-height:40px;border:1.5px solid transparent;border-radius:10px;background:transparent;
+.day{aspect-ratio:1/1;min-height:0;min-width:0;border:1.5px solid transparent;border-radius:10px;background:transparent;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:.95rem;position:relative;padding:2px}
 .day:hover{background:var(--soft)}
 .day.out{visibility:hidden}
@@ -92,7 +95,8 @@ ul{list-style:none;margin:0;padding:0}
 .bar{height:8px;background:var(--soft);border-radius:99px;overflow:hidden;margin:10px 0}
 .bar div{height:100%;width:0;background:var(--ok);transition:width .25s}
 body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-color .3s,color .3s}
-.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.top h1{margin:0}
 .theme{background:var(--soft);border:1px solid var(--border);border-radius:50%;width:38px;height:38px;font-size:1.1rem;line-height:1;display:flex;align-items:center;justify-content:center;transition:transform .4s}
 .theme:hover{border-color:var(--accent)}
 .theme.spin{transform:rotate(360deg)}
@@ -112,8 +116,8 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
 .sp-p{fill:none;stroke:var(--ok);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40;animation:draw .5s ease .8s forwards}
 .sp-t{font-size:1.3rem;font-weight:600;letter-spacing:.02em;opacity:0;animation:sp-in .6s ease 1s forwards}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}#splash{display:none}}
-.topr{display:flex;align-items:center;gap:8px}
-.sync{background:var(--soft);border:1px solid var(--border);border-radius:19px;padding:8px 12px;font-size:.85rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topr{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%}
+.sync{background:var(--soft);border:1px solid var(--border);border-radius:19px;padding:8px 12px;font-size:.85rem;max-width:150px;min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sync:disabled{color:var(--muted);cursor:default}
 .backup{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:8px;font-size:.85rem}
 
@@ -157,7 +161,7 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
 .addsub button{background:var(--soft);border:1px solid var(--border);border-radius:8px;padding:6px 12px}
 .trow{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:.82rem;color:var(--muted)}
 .note{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
-.mood{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+.mood{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;align-items:center}
 .mood span{font-size:.82rem;color:var(--muted);margin-right:4px}
 .mood button{background:var(--soft);border:1.5px solid transparent;border-radius:10px;font-size:1.25rem;line-height:1;padding:5px 8px;filter:grayscale(.7);opacity:.75;transition:transform .15s}
 .mood button[aria-pressed="true"]{filter:none;opacity:1;border-color:var(--accent);transform:scale(1.1)}
@@ -185,7 +189,7 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
 
 /* ---------- Статистика ---------- */
 .sgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
-@media (max-width:760px){.sgrid{grid-template-columns:1fr}}
+@media (max-width:760px){.sgrid{grid-template-columns:minmax(0,1fr)}}
 .stats4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
 @media (max-width:560px){.stats4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .stats4 .stat b{font-size:1.4rem}
@@ -203,14 +207,14 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
 .hc.fut{opacity:.4}
 .hc.sp{visibility:hidden}
 .hleg{display:flex;align-items:center;gap:4px;font-size:.75rem;color:var(--muted);margin-top:8px;flex-wrap:wrap}
-.chart{display:flex;align-items:stretch;gap:5px;height:170px}
+.chart{display:flex;align-items:stretch;gap:4px;height:170px;min-width:0}
 .cb{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px}
 .cv{font-size:.66rem;color:var(--muted);height:12px;line-height:12px}
 .cbar{flex:1;width:100%;display:flex;align-items:flex-end;background:var(--soft);border-radius:6px 6px 0 0;overflow:hidden}
 .cbar div{width:100%;background:var(--accent);transition:height .3s}
 .cb.best .cbar div{background:var(--ok)}
 .cb.worst .cbar div{background:var(--warn)}
-.cl{font-size:.66rem;color:var(--muted);white-space:nowrap}
+.cl{font-size:.62rem;color:var(--muted);white-space:nowrap;max-width:100%;overflow:hidden}
 .sgrid .card h2,.card h2.h2{font-size:1.05rem;margin:0 0 12px}
 .card p.note2{margin:12px 0 0;font-size:.88rem}
 .card p.muted{color:var(--muted);font-size:.8rem;margin:6px 0 0}
@@ -226,8 +230,9 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
 .sw{width:38px;height:38px;border-radius:50%;border:2px solid transparent;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1px var(--border)}
 :root[data-theme="dark"] .sw{color:#0c1220}
 .sw[aria-pressed="true"]{border-color:var(--surface);box-shadow:0 0 0 3px var(--text)}
-.seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.seg button{background:var(--soft);border:0;padding:8px 14px}
+.seg{display:inline-flex;max-width:100%;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.seg button{background:var(--soft);border:0;padding:8px 12px;min-width:0}
+@media (max-width:420px){.seg button{padding:8px 8px;font-size:.85rem}}
 .seg button[aria-pressed="true"]{background:var(--accent);color:#fff;font-weight:600}
 :root[data-theme="dark"] .seg button[aria-pressed="true"]{color:#0c1220}
 .srow{margin:0 0 14px}
@@ -375,7 +380,7 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
           </span>
         </div>
         <div class="note">
-          <div class="mood"><span>Настроение</span><span id="mood" style="display:flex;gap:6px;margin:0"></span></div>
+          <div class="mood"><span>Настроение</span><span id="mood" style="display:flex;flex-wrap:wrap;gap:6px;margin:0"></span></div>
           <textarea class="fld" id="noteText" rows="2" maxlength="200" placeholder="Заметка дня" aria-label="Заметка дня"></textarea>
         </div>
       </section>
