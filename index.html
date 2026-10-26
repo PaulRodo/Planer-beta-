@@ -16,7 +16,7 @@
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @supports (color:color-mix(in srgb,red,blue)){
-  :root{--bg:color-mix(in srgb,var(--accent) 6%,var(--bg0));--soft:color-mix(in srgb,var(--accent) 9%,var(--soft0))}
+  :root{--bg:color-mix(in srgb,var(--accent) 9%,var(--bg0));--soft:color-mix(in srgb,var(--accent) 13%,var(--soft0))}
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
@@ -87,7 +87,8 @@ ul{list-style:none;margin:0;padding:0}
 .tabs::-webkit-scrollbar{display:none}
 .tab{background:none;border:0;border-bottom:3px solid transparent;padding:9px 12px;color:var(--muted);font-weight:600;margin-bottom:-1px;white-space:nowrap}
 .tab.on{color:var(--text);border-bottom-color:var(--accent)}
-@media (max-width:480px){.tab{padding:9px 8px;font-size:.9rem}}
+@media (max-width:560px){.tab{flex:1;padding:9px 2px;font-size:.78rem;text-align:center}}
+@media (max-width:440px){.tab{font-size:.7rem;padding:9px 0;letter-spacing:-.01em}}
 .bar{height:8px;background:var(--soft);border-radius:99px;overflow:hidden;margin:10px 0}
 .bar div{height:100%;width:0;background:var(--ok);transition:width .25s}
 body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-color .3s,color .3s}
@@ -236,6 +237,28 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
 .catrow input[type=text]{flex:1;min-width:0}
 .ver{text-align:center;color:var(--muted);font-size:.8rem}
 
+/* ---------- Достижения ---------- */
+.sw.bgs{color:var(--text);box-shadow:0 0 0 1px var(--border)}
+.sw.bgs[aria-pressed="true"]{box-shadow:0 0 0 3px var(--text)}
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:10px}
+.ash{font-size:1rem;margin:20px 0 10px;display:flex;align-items:baseline;gap:8px}
+.ash small{color:var(--muted);font-weight:400;font-size:.8rem}
+.ach{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px}
+.ach.on{border-color:var(--ok)}
+.ai{width:46px;height:46px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:1.4rem;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}
+.ach.off .ai{filter:grayscale(1);opacity:.4}
+.ad{min-width:0;flex:1}
+.ad b{display:block}
+.ad span{display:block;font-size:.82rem;color:var(--muted)}
+.ad .bar{height:6px;margin:8px 0 2px}
+.ad .ok{color:var(--ok);font-weight:600;margin-top:4px}
+.next{display:flex;justify-content:space-between;gap:10px;font-size:.88rem;margin-top:8px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:65;background:var(--surface);
+  border:1.5px solid var(--accent);border-radius:14px;padding:10px 16px;display:flex;gap:10px;align-items:center;box-shadow:0 8px 28px rgba(0,0,0,.25);max-width:92vw;cursor:pointer;font-size:.9rem}
+#toast span{font-size:1.6rem}
+#toast.show{animation:toast-in .45s cubic-bezier(.2,1.3,.4,1)}
+@keyframes toast-in{from{opacity:0;transform:translate(-50%,40px)}to{opacity:1;transform:translate(-50%,0)}}
+
 /* ---------- Награда и конфетти ---------- */
 #fx{position:fixed;inset:0;z-index:60;pointer-events:none}
 #award{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:rgba(8,14,22,.72);animation:aw-bg .3s ease-out}
@@ -265,6 +288,7 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
   <div class="sp-t">Планер</div>
 </div>
 <canvas id="fx" aria-hidden="true"></canvas>
+<div id="toast" hidden role="status"></div>
 <div id="award" role="dialog" aria-modal="true" aria-label="Награда" hidden>
   <div class="aw-in">
     <div class="aw-rays"></div>
@@ -287,6 +311,7 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
     <button class="tab on" id="tabPlan" role="tab" aria-selected="true">Задачи</button>
     <button class="tab" id="tabChal" role="tab" aria-selected="false">Испытания</button>
     <button class="tab" id="tabStat" role="tab" aria-selected="false">Статистика</button>
+    <button class="tab" id="tabAch" role="tab" aria-selected="false">Достижения</button>
     <button class="tab" id="tabSet" role="tab" aria-selected="false">Настройки</button>
   </nav>
 
@@ -399,12 +424,20 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
     </div>
   </div>
 
+  <!-- ========== ДОСТИЖЕНИЯ ========== -->
+  <div id="pageAch" hidden>
+    <section class="card" id="achTop" aria-label="Итоги"></section>
+    <div style="margin:14px 0 0"><div class="seg" id="achSeg"><button data-f="all">Все</button><button data-f="on">Полученные</button><button data-f="off">Не получены</button></div></div>
+    <div id="achList"></div>
+  </div>
+
   <!-- ========== НАСТРОЙКИ ========== -->
   <div id="pageSet" hidden>
     <div class="sgrp">
       <section class="card">
         <h2>Внешний вид</h2>
         <div class="srow"><b>Основной цвет</b><div class="swatches" id="accents"></div></div>
+        <div class="srow"><b>Цвет фона</b><div class="swatches" id="bgs"></div></div>
         <div class="srow" style="margin-bottom:0"><b>Неделя начинается с</b>
           <div class="seg" id="wsSeg"><button data-ws="1">Понедельника</button><button data-ws="0">Воскресенья</button></div>
         </div>
@@ -457,6 +490,17 @@ var ACCENTS=[
   {id:"orange",n:"Оранжевый",l:"#b45f06",d:"#f0a65a"},
   {id:"slate",n:"Графит",l:"#475569",d:"#aab6c6"}
 ];
+var BGS=[
+  {id:"auto",n:"Авто (по основному цвету)"},
+  {id:"plain",n:"Классический",l:["#eef2f1","#e4ebea"],d:["#121a22","#243241"]},
+  {id:"mint",n:"Мятный",l:["#e8f3ec","#d9eadf"],d:["#10201a","#1d3329"]},
+  {id:"sky",n:"Небесный",l:["#e8f0fa","#d8e4f4"],d:["#0f1a2b","#1c2b44"]},
+  {id:"lav",n:"Лавандовый",l:["#f0ecf8","#e2dcf0"],d:["#1a1526","#2d2543"]},
+  {id:"peach",n:"Персиковый",l:["#faf0e8","#f1e1d3"],d:["#241812","#3a291f"]},
+  {id:"rose",n:"Розовый",l:["#f8ecf0","#efdbe2"],d:["#251319","#3c212b"]},
+  {id:"sand",n:"Песочный",l:["#f4f1e6","#e8e3d0"],d:["#1f1c12","#352f1e"]},
+  {id:"gray",n:"Серый",l:["#e9eaec","#dcdee2"],d:["#0e1114","#1f242a"]}
+];
 var THRESH=[7,14,30];
 var TIER={7:["#e8a46b","#a8622a","Неделя подряд"],14:["#f1f5f9","#8fa0b5","Две недели подряд"],30:["#ffe27a","#d99a0b","Месяц подряд"]};
 
@@ -486,7 +530,7 @@ function normS(){
   if(!Array.isArray(S.cats)) S.cats=defaultCats();
   if(!Array.isArray(S.rec)) S.rec=[];
   if(!S.notes||typeof S.notes!=="object"||Array.isArray(S.notes)) S.notes={};
-  S.set=Object.assign({accent:"blue",ws:1,fx:1,hap:1},(S.set&&typeof S.set==="object")?S.set:{});
+  S.set=Object.assign({accent:"blue",bg:"auto",ws:1,fx:1,hap:1},(S.set&&typeof S.set==="object")?S.set:{});
 }
 function migrate(){
   if(!store||typeof store!=="object"||Array.isArray(store)) store={};
@@ -511,7 +555,8 @@ normS(); migrate();
 function persist(){
   try{ localStorage.setItem(KEY,JSON.stringify(store)); localStorage.setItem(SKEY,JSON.stringify(S)); localStorage.setItem(CKEY,JSON.stringify(chStore)); }catch(e){}
 }
-function save(){ persist(); touch(); }
+var achTimer=null;
+function save(){ persist(); touch(); clearTimeout(achTimer); achTimer=setTimeout(function(){ checkAch(false); },500); }
 
 var now=new Date(), todayKey=dkey(now);
 var viewY=now.getFullYear(), viewM=now.getMonth(), sel=todayKey;
@@ -838,8 +883,11 @@ function curTheme(){
   return (window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";
 }
 function applyAccent(){
-  var a=ACCENTS.filter(function(x){return x.id===S.set.accent;})[0]||ACCENTS[0];
-  root.style.setProperty("--accent",curTheme()==="dark"?a.d:a.l);
+  var a=ACCENTS.filter(function(x){return x.id===S.set.accent;})[0]||ACCENTS[0], dark=curTheme()==="dark";
+  root.style.setProperty("--accent",dark?a.d:a.l);
+  var b=BGS.filter(function(x){return x.id===S.set.bg;})[0];
+  if(!b||b.id==="auto"){ root.style.removeProperty("--bg"); root.style.removeProperty("--soft"); }
+  else{ var v=dark?b.d:b.l; root.style.setProperty("--bg",v[0]); root.style.setProperty("--soft",v[1]); }
 }
 function setTheme(t,persistIt){
   root.setAttribute("data-theme",t);
@@ -1233,6 +1281,10 @@ function renderSettings(){
     var on=S.set.accent===a.id;
     return '<button class="sw" data-ac="'+a.id+'" style="background:'+(dark?a.d:a.l)+'" title="'+a.n+'" aria-label="'+a.n+'" aria-pressed="'+on+'">'+(on?"✓":"")+'</button>';
   }).join("");
+  $("bgs").innerHTML=BGS.map(function(b){
+    var on=S.set.bg===b.id, st=b.id==="auto"?"background:linear-gradient(135deg,var(--accent) 0 40%,var(--surface) 40% 100%)":"background:"+(dark?b.d[0]:b.l[0]);
+    return '<button class="sw bgs" data-bg="'+b.id+'" style="'+st+'" title="'+b.n+'" aria-label="Фон: '+b.n+'" aria-pressed="'+on+'">'+(on?"✓":"")+'</button>';
+  }).join("");
   $("wsSeg").querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed",String(+b.dataset.ws===ws())); });
   $("setFx").checked=!!S.set.fx; $("setHap").checked=!!S.set.hap;
   $("catList").innerHTML=S.cats.length?S.cats.map(function(c){
@@ -1243,6 +1295,10 @@ function afterCatChange(){ save(); setTimeout(function(){ fillCatSelect(); rende
 $("accents").addEventListener("click",function(e){
   var b=e.target.closest("[data-ac]"); if(!b) return;
   S.set.accent=b.dataset.ac; applyAccent(); haptic("select"); save(); renderSettings();
+});
+$("bgs").addEventListener("click",function(e){
+  var b=e.target.closest("[data-bg]"); if(!b) return;
+  S.set.bg=b.dataset.bg; applyAccent(); haptic("select"); save(); renderSettings();
 });
 $("wsSeg").addEventListener("click",function(e){
   var b=e.target.closest("[data-ws]"); if(!b) return;
@@ -1273,8 +1329,181 @@ function addCat(){
 $("newCatBtn").addEventListener("click",addCat);
 $("newCatName").addEventListener("keydown",function(e){ if(e.key==="Enter") addCat(); });
 
+/* ---------- Достижения ---------- */
+function plural(n,a,b,c){ var m=n%100, d=n%10; if(m>10&&m<20) return c; if(d===1) return a; if(d>1&&d<5) return b; return c; }
+var A=[], TIERC=[["#e8a46b","#a8622a"],["#f1f5f9","#8fa0b5"],["#ffe27a","#d99a0b"],["#a5f3fc","#6d3fc0"]];
+var SECS=["Задачи","Дни и серии","Привычки","Категории","Дневник","Испытания","Оформление","Коллекция"];
+function defAch(sec,k,e,descFn,list){
+  list.forEach(function(x,i){
+    var r=list.length>1?i/(list.length-1):.67;
+    A.push({id:k+x[0],s:sec,k:k,t:x[0],n:x[1],d:descFn(x[0]),e:e,c:TIERC[r<.34?0:r<.67?1:r<1?2:3]});
+  });
+}
+var DN=function(n){ return n+" "+plural(n,"день","дня","дней"); };
+defAch("Задачи","done","✅",function(n){ return "Выполнить "+n+" "+plural(n,"задачу","задачи","задач"); },
+  [[1,"Первый шаг"],[10,"Разгон"],[50,"Втянулся"],[100,"Сотня"],[250,"Четверть тысячи"],[500,"Полутысяча"],[1000,"Тысяча дел"],[2500,"Мастер дел"]]);
+defAch("Задачи","tasksDay","⚡",function(n){ return "Выполнить "+n+" задач за один день"; },
+  [[5,"Продуктивный день"],[10,"Буря задач"],[20,"Неудержимый"]]);
+defAch("Задачи","imp","★",function(n){ return "Выполнить "+n+" важных задач"; },
+  [[10,"На главном"],[50,"Приоритетный"],[150,"Первым делом"]]);
+defAch("Задачи","subs","☰",function(n){ return "Отметить "+n+" пунктов в подзадачах"; },
+  [[10,"Шаг за шагом"],[50,"Дотошный"],[200,"Перфекционист"],[1000,"Мастер мелочей"]]);
+defAch("Задачи","early","🌅",function(n){ return "Выполнить "+n+" задач со сроком до 8:00"; },
+  [[5,"Жаворонок"],[30,"Ранняя пташка"],[100,"Встречая рассвет"]]);
+defAch("Дни и серии","days","🌟",function(n){ return "Полностью закрыть "+DN(n); },
+  [[1,"Чистый день"],[10,"Десятка"],[30,"Месяц в зелёном"],[100,"Сто дней порядка"],[365,"Год побед"]]);
+defAch("Дни и серии","streak","🔥",function(n){ return "Закрывать все задачи "+DN(n)+" подряд"; },
+  [[3,"Разогрев"],[7,"Неделя огня"],[14,"Две недели"],[30,"Месячный марафон"],[60,"Два месяца стали"],[100,"Сто дней подряд"],[200,"Железная воля"],[365,"Целый год"]]);
+defAch("Дни и серии","planned","📅",function(n){ return "Иметь запланированные задачи в "+n+" "+plural(n,"дне","днях","днях"); },
+  [[7,"Планировщик"],[30,"Режим дня"],[100,"Стратег"],[365,"Хронометрист"]]);
+defAch("Дни и серии","weekFull","📆",function(n){ return "Закрыть все задачи в каждый день недели (Пн–Вс): "+n+" "+plural(n,"неделя","недели","недель"); },
+  [[1,"Идеальная неделя"],[4,"Месяц идеальных"],[12,"Квартал идеала"],[26,"Полгода идеала"]]);
+defAch("Дни и серии","workWeek","💼",function(n){ return "Закрыть все задачи в будни (Пн–Пт): "+n+" "+plural(n,"неделя","недели","недель"); },
+  [[1,"Рабочая неделя"],[10,"Трудяга"]]);
+defAch("Дни и серии","weekend","🏖",function(n){ return "Закрыть все задачи в "+n+" выходных (Сб и Вс)"; },
+  [[10,"Выходной с пользой"],[50,"Выходные не помеха"]]);
+defAch("Дни и серии","monthFull","🗓",function(n){ return "Закрыть все задачи в каждый день календарного месяца: "+n+" "+plural(n,"месяц","месяца","месяцев"); },
+  [[1,"Идеальный месяц"],[3,"Мастер месяцев"]]);
+defAch("Привычки","rec","↻",function(n){ return "Выполнить "+n+" повторяющихся задач"; },
+  [[1,"Привычка началась"],[30,"Ритм"],[100,"Автопилот"],[365,"Часовой механизм"]]);
+defAch("Категории","cats","🎯",function(n){ return "Выполнить задачи в "+n+" разных категориях"; },[[3,"Всесторонний"]]);
+defAch("Категории","catmax","🏅",function(n){ return "Выполнить "+n+" задач в одной категории"; },[[50,"Специалист"],[200,"Эксперт"]]);
+defAch("Дневник","notes","📝",function(n){ return "Написать заметку дня: "+n+" "+plural(n,"раз","раза","раз"); },
+  [[1,"Первая запись"],[7,"Дневник"],[30,"Летописец"],[100,"Автобиограф"]]);
+defAch("Дневник","moods","🙂",function(n){ return "Отметить настроение в "+n+" "+plural(n,"дне","днях","днях"); },
+  [[7,"Эмоции под контролем"],[30,"Знаю себя"],[100,"Мастер настроения"]]);
+defAch("Испытания","chBest","🏁",function(n){ return "Серия в испытании: "+DN(n)+" подряд"; },
+  [[7,"Первая неделя"],[14,"Две недели без пропусков"],[30,"Тридцать из тридцати"],[60,"Два месяца подряд"],[100,"Сто дней без пауз"],[365,"Год привычки"]]);
+defAch("Испытания","chDays","💪",function(n){ return "Отметить "+n+" "+plural(n,"день","дня","дней")+" в испытаниях"; },
+  [[30,"Закалка"],[100,"Привычка закреплена"],[500,"Несгибаемый"]]);
+defAch("Испытания","chGoal","🎯",function(n){ return "Достичь месячной цели в числовом испытании: "+n+" "+plural(n,"раз","раза","раз"); },
+  [[1,"Цель взята"],[5,"Снайпер"]]);
+defAch("Испытания","chPar","🤹",function(n){ return "Вести "+n+" испытаний с отметками в одном месяце"; },
+  [[3,"Многоборец"],[5,"Пятиборье"]]);
+defAch("Испытания","chFull","🛡",function(n){ return "Отметить каждый день месяца в одном испытании: "+n+" "+plural(n,"раз","раза","раз"); },
+  [[1,"Без единого пропуска"],[3,"Железная дисциплина"]]);
+defAch("Оформление","sAccent","🎨",function(){ return "Выбрать основной цвет в настройках"; },[[1,"Мой цвет"]]);
+defAch("Оформление","sBg","🖼",function(){ return "Выбрать цвет фона в настройках"; },[[1,"Мой фон"]]);
+defAch("Оформление","sCat","🏷",function(){ return "Добавить свою категорию"; },[[1,"Своя категория"]]);
+defAch("Коллекция","ach","🏆",function(n){ return "Получить "+n+" достижений"; },
+  [[10,"Коллекционер"],[25,"Охотник за наградами"],[50,"Легенда"]]);
+
+function achStats(){
+  ensureRange(todayKey);
+  var st={done:0,days:0,streak:0,planned:0,tasksDay:0,imp:0,subs:0,rec:0,early:0,cats:0,catmax:0,weekFull:0,workWeek:0,weekend:0,monthFull:0,
+    notes:0,moods:0,chBest:0,chDays:0,chGoal:0,chPar:0,chFull:0,sAccent:0,sBg:0,sCat:0,ach:0};
+  var keys=Object.keys(store).sort(), cd={}, closed={};
+  keys.forEach(function(k){
+    if(k>todayKey) return; var t=store[k]; if(!t.length) return;
+    st.planned++; var dn=0;
+    t.forEach(function(x){
+      if(x.d){
+        dn++; st.done++;
+        if(x.i) st.imp++; if(x.r) st.rec++; if(x.tm&&x.tm<"08:00") st.early++;
+        if(x.c&&catById(x.c)) cd[x.c]=(cd[x.c]||0)+1;
+      }
+      (x.s||[]).forEach(function(z){ if(z.d) st.subs++; });
+    });
+    if(dn>st.tasksDay) st.tasksDay=dn;
+    if(dn===t.length){ st.days++; closed[k]=1; }
+  });
+  st.cats=Object.keys(cd).length;
+  Object.keys(cd).forEach(function(c){ if(cd[c]>st.catmax) st.catmax=cd[c]; });
+  if(keys.length){
+    var k=keys[0], run=0, guard=0, mc={};
+    while(k<=todayKey&&guard++<6000){
+      var gd=pkey(k).getDay();
+      if(closed[k]){
+        run++; if(run>st.streak) st.streak=run;
+        if(gd===0||gd===6) st.weekend++;
+        var mk=k.slice(0,7); mc[mk]=(mc[mk]||0)+1;
+      }else run=0;
+      if(gd===1&&addDays(k,6)<=todayKey){
+        var c7=0,c5=0;
+        for(var q=0;q<7;q++) if(closed[addDays(k,q)]){ c7++; if(q<5) c5++; }
+        if(c7===7) st.weekFull++; if(c5===5) st.workWeek++;
+      }
+      k=addDays(k,1);
+    }
+    Object.keys(mc).forEach(function(m){ var p=m.split("-"); if(mc[m]===new Date(+p[0],+p[1],0).getDate()) st.monthFull++; });
+  }
+  Object.keys(S.notes).forEach(function(k){ var n=S.notes[k]; if(n.n) st.notes++; if(n.m) st.moods++; });
+  Object.keys(chStore).forEach(function(mk){
+    var p=mk.split("-"), cnt=new Date(+p[0],+p[1],0).getDate(), active=0;
+    chStore[mk].items.forEach(function(it){
+      var n=0, tot=0;
+      for(var d=1;d<=cnt;d++){ if(itOn(it,d)) n++; if(it.type==="num") tot+=(+it.vals[d]||0); }
+      if(n) active++; st.chDays+=n;
+      if(it.type==="num"){ if(it.goal>0&&tot>=it.goal) st.chGoal++; } else if(n===cnt) st.chFull++;
+      if(n){ var b=bestRun(chainSet(it)); if(b>st.chBest) st.chBest=b; }
+    });
+    if(active>st.chPar) st.chPar=active;
+  });
+  st.sAccent=S.set.accent!=="blue"?1:0;
+  st.sBg=S.set.bg&&S.set.bg!=="auto"?1:0;
+  st.sCat=S.cats.some(function(c){ return ["study","work","sport","home"].indexOf(c.id)<0; })?1:0;
+  return st;
+}
+function checkAch(silent){
+  var st=achStats(), seed=!S.ach; if(seed) S.ach={};
+  var fresh=[], cnt=0;
+  A.forEach(function(a){
+    if(a.k==="ach") return;
+    if(st[a.k]>=a.t){ cnt++; if(!(a.id in S.ach)){ S.ach[a.id]=seed?"":todayKey; fresh.push(a); } }
+    else if(a.id in S.ach) cnt++;
+  });
+  st.ach=cnt;
+  A.forEach(function(a){
+    if(a.k==="ach"&&st.ach>=a.t&&!(a.id in S.ach)){ S.ach[a.id]=seed?"":todayKey; fresh.push(a); }
+  });
+  if(fresh.length||seed){ persist(); touch(); }
+  if(fresh.length&&!silent&&!seed) showToast(fresh);
+  return st;
+}
+var toastT=null;
+function showToast(list){
+  var t=$("toast");
+  t.innerHTML='<span>🏆</span><div><b>'+(list.length>1?"Новые достижения":"Достижение получено")+'</b><br>'
+    +esc(list.slice(0,2).map(function(a){ return a.n; }).join(", "))+(list.length>2?" и ещё "+(list.length-2):"")+'</div>';
+  t.hidden=false; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(function(){ t.hidden=true; },5500);
+  haptic("success"); if(S.set.fx) burst(50,.85);
+}
+$("toast").addEventListener("click",function(){ this.hidden=true; showTab("ach"); });
+
+var achF="all";
+function renderAch(){
+  var st=checkAch(false), got=0;
+  var has=function(a){ return !!S.ach&&(a.id in S.ach); };
+  A.forEach(function(a){ if(has(a)) got++; });
+  var near=A.filter(function(a){ return !has(a); }).map(function(a){ return {a:a,r:Math.min(1,(st[a.k]||0)/a.t)}; })
+    .sort(function(x,y){ return y.r-x.r; }).slice(0,3);
+  $("achTop").innerHTML='<div class="head" style="margin-bottom:0"><h2 class="h2" style="margin:0">Получено '+got+' из '+A.length+'</h2><b>'+pct(got,A.length)+'%</b></div>'
+    +'<div class="bar"><div style="width:'+pct(got,A.length)+'%"></div></div>'
+    +(near.length?'<div style="margin-top:10px;font-size:.82rem;color:var(--muted)">Ближайшие цели</div>'+near.map(function(o){
+      return '<div class="next"><span>'+o.a.e+' '+esc(o.a.n)+'</span><span style="color:var(--muted)">'+fmtFull(Math.min(st[o.a.k]||0,o.a.t))+' / '+fmtFull(o.a.t)+'</span></div>';
+    }).join(""):'<p class="muted" style="margin-top:10px">Все достижения получены. Вы легенда!</p>');
+  $("achSeg").querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed",String(b.dataset.f===achF)); });
+  var html="";
+  SECS.forEach(function(sec){
+    var list=A.filter(function(a){ return a.s===sec; });
+    var gotS=list.filter(has).length;
+    var show=list.filter(function(a){ return achF==="all"||(achF==="on"?has(a):!has(a)); });
+    if(!show.length) return;
+    html+='<h3 class="ash">'+sec+' <small>'+gotS+' из '+list.length+'</small></h3><div class="agrid">'+show.map(function(a){
+      var on=has(a), v=Math.min(st[a.k]||0,a.t);
+      var body='<b>'+esc(a.n)+'</b><span>'+esc(a.d)+'</span>';
+      if(on) body+='<span class="ok">✓ Получено'+(S.ach[a.id]?" · "+fmtDate(S.ach[a.id]):"")+'</span>';
+      else if(a.t>1) body+='<div class="bar"><div style="width:'+pct(v,a.t)+'%"></div></div><span>'+fmtFull(v)+' / '+fmtFull(a.t)+'</span>';
+      return '<div class="ach '+(on?"on":"off")+'"><div class="ai" style="background:linear-gradient(135deg,'+a.c[0]+','+a.c[1]+')">'+a.e+'</div><div class="ad">'+body+'</div></div>';
+    }).join("")+'</div>';
+  });
+  $("achList").innerHTML=html||'<div class="empty">Здесь пока пусто.</div>';
+}
+$("achSeg").addEventListener("click",function(e){ var b=e.target.closest("[data-f]"); if(!b) return; achF=b.dataset.f; renderAch(); });
+
 /* ---------- Вкладки ---------- */
-var TABS={plan:["tabPlan","pagePlan"],chal:["tabChal","pageChal"],stat:["tabStat","pageStat"],set:["tabSet","pageSet"]};
+var TABS={plan:["tabPlan","pagePlan"],chal:["tabChal","pageChal"],stat:["tabStat","pageStat"],ach:["tabAch","pageAch"],set:["tabSet","pageSet"]};
 function showTab(name){
   Object.keys(TABS).forEach(function(n){
     var on=n===name;
@@ -1286,6 +1515,7 @@ function showTab(name){
   pg.classList.remove("fade"); void pg.offsetWidth; pg.classList.add("fade");
   if(name==="chal") renderCh();
   if(name==="stat") renderStats();
+  if(name==="ach") renderAch();
   if(name==="set") renderSettings();
 }
 Object.keys(TABS).forEach(function(n){ $(TABS[n][0]).addEventListener("click",function(){ showTab(n); }); });
@@ -1293,6 +1523,7 @@ Object.keys(TABS).forEach(function(n){ $(TABS[n][0]).addEventListener("click",fu
 function renderAll(){
   fillDow(); fillCatSelect(); render(); renderCh(); renderSettings();
   if(!$("pageStat").hidden) renderStats();
+  if(!$("pageAch").hidden) renderAch();
 }
 
 /* ---------- Смена дня при открытом приложении ---------- */
@@ -1337,6 +1568,7 @@ function applyRemote(r){
       S.rec=r.rec||[]; S.notes=r.notes||{};
       if(r.sx){ if(Array.isArray(r.sx.cats)) S.cats=r.sx.cats; if(r.sx.set) S.set=Object.assign(S.set,r.sx.set); }
     }
+    if(r.ach) S.ach=Object.assign({},S.ach||{},r.ach);
     normS(); migrate(); persist();
     try{ localStorage.setItem("planner:updated",String(r.updated)); }catch(e){}
     applyAccent(); renderAll();
@@ -1362,6 +1594,7 @@ function tgChunks(){
   var out=Object.assign({},pack("t",store),pack("n",S.notes));
   S.rec.forEach(function(r){ out["r_"+r.id]=JSON.stringify(r); });
   out.s=JSON.stringify({set:S.set,cats:S.cats});
+  if(S.ach) out.a=JSON.stringify(S.ach);
   Object.keys(chStore).forEach(function(m){
     chStore[m].items.forEach(function(it){ out["c_"+m+"_"+it.id]=JSON.stringify(it); });
   });
@@ -1385,12 +1618,13 @@ function tgPull(done){
     if(err||!keys||!keys.length){ done(null); return; }
     cs.getItems(keys,function(err2,vals){
       if(err2||!vals){ done(null); return; }
-      var t={}, c={}, n={}, rec=[], sx=null, upd=0;
+      var t={}, c={}, n={}, rec=[], sx=null, ach=null, upd=0;
       keys.forEach(function(k){
         var v=vals[k]; if(!v) return; lastPushed[k]=v;
         try{
           if(k==="meta") upd=+v||0;
           else if(k==="s") sx=JSON.parse(v);
+          else if(k==="a") ach=JSON.parse(v);
           else if(k.indexOf("t_")===0) Object.assign(t,JSON.parse(v));
           else if(k.indexOf("n_")===0) Object.assign(n,JSON.parse(v));
           else if(k.indexOf("r_")===0) rec.push(JSON.parse(v));
@@ -1402,7 +1636,7 @@ function tgPull(done){
         }catch(e){}
       });
       Object.keys(c).forEach(function(m){ if(Array.isArray(c[m].items)) c[m].items.sort(function(a,b){ return a.id<b.id?-1:1; }); });
-      done({tasks:t,ch:c,notes:n,rec:rec,sx:sx,v6:!!sx,updated:upd});
+      done({tasks:t,ch:c,notes:n,rec:rec,sx:sx,ach:ach,v6:!!sx,updated:upd});
     });
   });
 }
@@ -1425,7 +1659,7 @@ function initTelegram(){
 
 /* Браузер: перенос данных между устройствами через файл. */
 $("exportBtn").addEventListener("click",function(){
-  var data=JSON.stringify({app:"planner",version:6,tasks:store,ch:chStore,v6:{cats:S.cats,rec:S.rec,notes:S.notes,set:S.set},exported:Date.now()});
+  var data=JSON.stringify({app:"planner",version:6,tasks:store,ch:chStore,v6:{cats:S.cats,rec:S.rec,notes:S.notes,set:S.set,ach:S.ach},exported:Date.now()});
   var a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));
   a.download="planner-backup-"+todayKey+".json";
@@ -1442,7 +1676,7 @@ $("importFile").addEventListener("change",function(){
       if(!o||!o.tasks||!o.ch||typeof o.tasks!=="object"||typeof o.ch!=="object") throw 0;
       if(confirm("Заменить данные на этом устройстве данными из файла?")){
         store=o.tasks; chStore=o.ch;
-        if(o.v6){ S.cats=o.v6.cats; S.rec=o.v6.rec; S.notes=o.v6.notes; S.set=o.v6.set; }
+        if(o.v6){ S.cats=o.v6.cats; S.rec=o.v6.rec; S.notes=o.v6.notes; S.set=o.v6.set; if(o.v6.ach) S.ach=o.v6.ach; }
         normS(); migrate(); persist(); touch(); applyAccent(); renderAll();
       }
     }catch(e){ alert("Не удалось прочитать файл. Выберите файл, сохранённый этим планером."); }
@@ -1453,6 +1687,7 @@ $("importFile").addEventListener("change",function(){
 
 renderAll();
 initTelegram();
+setTimeout(function(){ checkAch(false); },2300);
 })();
 </script>
 </body>
