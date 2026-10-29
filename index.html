@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Планер задач · версия 6 -->
+<!-- Планер задач · версия 7 -->
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -285,6 +285,32 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
 .aw-b{position:relative;margin-top:18px;background:#fff;color:#16222f;border:0;border-radius:99px;padding:10px 26px;font-weight:700;animation:aw-txt .5s ease .95s both}
 .aw-sp{position:absolute;width:14px;height:14px;background:#ffe27a;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);animation:aw-tw 1.6s ease-in-out infinite}
 @keyframes aw-tw{0%,100%{transform:scale(0) rotate(0);opacity:0}50%{transform:scale(1.3) rotate(90deg);opacity:1}}
+
+/* Расписание */
+.sch-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.sch-top h2{margin:0;font-size:1.1rem}
+.sch-sum{display:flex;gap:10px;margin:12px 0}
+.sch-now{font-size:.88rem;color:var(--muted);margin:0 0 10px;min-height:1.2em}
+.sch-add{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.sch-add .full{grid-column:1/-1}
+.sch-add select.fld{width:100%}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 14px}
+.chips button{background:var(--soft);border:1px solid var(--border);border-radius:99px;padding:4px 11px;font-size:.8rem}
+.chips button:hover{border-color:var(--accent)}
+.tl{list-style:none;margin:0;padding:0}
+.ev{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--border);border-left:5px solid var(--cc,var(--accent));border-radius:10px;margin-bottom:6px;background:var(--surface);animation:slidein .25s ease-out}
+.ev.now{box-shadow:0 0 0 2px var(--accent)}
+.ev.done .et{text-decoration:line-through;color:var(--muted)}
+.ev input[type=checkbox]{width:20px;height:20px;accent-color:var(--ok);flex:none;cursor:pointer}
+.ev .tm{font-variant-numeric:tabular-nums;font-size:.85rem;min-width:96px}
+.ev .tm small{color:var(--muted)}
+.ev .et{flex:1;min-width:0;word-break:break-word}
+.ev .warn{color:var(--warn);font-size:.78rem}
+.ev .x{background:none;border:0;color:var(--muted);font-size:1.2rem;padding:2px 8px;border-radius:6px}
+.ev .x:hover{color:#c0392b;background:var(--soft)}
+.gap{color:var(--muted);font-size:.8rem;text-align:center;padding:0 0 8px;list-style:none}
+.tplrow{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:.88rem}
+.tplrow select.fld{width:auto;flex:1;min-width:140px}
 </style>
 </head>
 <body>
@@ -314,6 +340,7 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
   </div>
   <nav class="tabs" role="tablist">
     <button class="tab on" id="tabPlan" role="tab" aria-selected="true">Задачи</button>
+    <button class="tab" id="tabSched" role="tab" aria-selected="false">Расписание</button>
     <button class="tab" id="tabChal" role="tab" aria-selected="false">Испытания</button>
     <button class="tab" id="tabStat" role="tab" aria-selected="false">Статистика</button>
     <button class="tab" id="tabAch" role="tab" aria-selected="false">Достижения</button>
@@ -388,6 +415,50 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
   </div>
 
   <!-- ========== ИСПЫТАНИЯ ========== -->
+  <!-- ========== РАСПИСАНИЕ ========== -->
+  <div id="pageSched" hidden>
+    <p class="sub">Составь день по часам и минутам: события, шаблоны, свободные окна и сводка времени.</p>
+    <section class="card" style="max-width:680px;margin:0 auto" aria-label="Расписание дня">
+      <div class="sch-top">
+        <h2 id="schTitle"></h2>
+        <div class="nav">
+          <button id="schPrev" aria-label="Предыдущий день">‹</button>
+          <button class="today-btn" id="schToday">Сегодня</button>
+          <button id="schNext" aria-label="Следующий день">›</button>
+        </div>
+      </div>
+      <div class="bar"><div id="schBar"></div></div>
+      <div class="sch-sum">
+        <div class="stat"><b id="schPlan">0 мин</b><span>запланировано</span></div>
+        <div class="stat"><b id="schDone">0%</b><span id="schDoneSub">выполнено</span></div>
+        <div class="stat"><b id="schFree">—</b><span>свободно 06:00–23:00</span></div>
+      </div>
+      <p class="sch-now" id="schNow"></p>
+      <div class="sch-add">
+        <input class="fld" type="time" id="schS" value="09:00" aria-label="Начало">
+        <input class="fld" type="time" id="schE" aria-label="Конец">
+        <input class="fld full" type="text" id="schT" maxlength="100" placeholder="Что планируешь?" autocomplete="off">
+        <select class="fld" id="schC" aria-label="Категория"></select>
+        <button class="btn" id="schAdd">Добавить</button>
+      </div>
+      <div class="chips" id="schDur" aria-label="Длительность"></div>
+      <ul class="tl" id="schList"></ul>
+      <div class="empty" id="schEmpty">На этот день событий нет. Добавь первое или примени шаблон.</div>
+      <div class="tplrow">
+        <select class="fld" id="schTpl" aria-label="Шаблон"></select>
+        <button class="link" id="schApply">Применить</button>
+        <button class="link" id="schSave">Сохранить день как шаблон</button>
+        <button class="link" id="schDelTpl">Удалить шаблон</button>
+      </div>
+      <div class="tplrow">
+        <button class="link" id="schCopy">Скопировать со вчера</button>
+        <button class="link" id="schBack">Сдвинуть всё на −15 мин</button>
+        <button class="link" id="schFwd">Сдвинуть всё на +15 мин</button>
+        <button class="link" id="schClear">Очистить день</button>
+      </div>
+    </section>
+  </div>
+
   <div id="pageChal" hidden>
     <p class="sub">Заведите несколько испытаний на месяц: «сделал / не сделал» или число за день с месячной целью. Награды даются за серии в 7, 14 и 30 дней подряд.</p>
     <div class="head">
@@ -535,6 +606,8 @@ function normS(){
   if(!Array.isArray(S.cats)) S.cats=defaultCats();
   if(!Array.isArray(S.rec)) S.rec=[];
   if(!S.notes||typeof S.notes!=="object"||Array.isArray(S.notes)) S.notes={};
+  if(!S.sched||typeof S.sched!=="object"||Array.isArray(S.sched)) S.sched={};
+  if(!Array.isArray(S.tpl)) S.tpl=[];
   S.set=Object.assign({accent:"blue",bg:"auto",ws:1,fx:1,hap:1},(S.set&&typeof S.set==="object")?S.set:{});
 }
 function migrate(){
@@ -1507,8 +1580,129 @@ function renderAch(){
 }
 $("achSeg").addEventListener("click",function(e){ var b=e.target.closest("[data-f]"); if(!b) return; achF=b.dataset.f; renderAch(); });
 
+/* ---------- Расписание дня ---------- */
+var schK=todayKey;
+var scFmt=function(m){ return pad(Math.floor(m/60)%24)+":"+pad(m%60); };
+var scMin=function(v){ var p=(v||"").split(":"); return p.length===2?(+p[0])*60+(+p[1]):null; };
+var scEvs=function(k){ return (S.sched[k]||[]).slice().sort(function(a,b){ return a.s-b.s||a.e-b.e; }); };
+function scDur(m){ var h=Math.floor(m/60), r=m%60; return (h?h+" ч":"")+(h&&r?" ":"")+(r||!h?r+" мин":""); }
+function scUnion(list){
+  var tot=0, cs=-1, ce=-1;
+  list.forEach(function(e){ if(e.s>ce){ if(ce>cs) tot+=ce-cs; cs=e.s; ce=e.e; } else if(e.e>ce) ce=e.e; });
+  return ce>cs?tot+ce-cs:tot;
+}
+function fillSchCats(){
+  var s=$("schC"), v=s.value;
+  s.innerHTML='<option value="">Без категории</option>'+S.cats.map(function(c){ return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>'; }).join("");
+  s.value=catById(v)?v:"";
+}
+function fillTpl(){
+  var s=$("schTpl"), v=s.value;
+  s.innerHTML=S.tpl.length?S.tpl.map(function(t){ return '<option value="'+esc(t.id)+'">'+esc(t.name)+' ('+t.items.length+')</option>'; }).join(""):'<option value="">Шаблонов пока нет</option>';
+  if(v) s.value=v;
+}
+function renderSched(){
+  var p=schK.split("-"), list=scEvs(schK), cu=new Date(), nowM=cu.getHours()*60+cu.getMinutes(), isT=schK===todayKey;
+  $("schTitle").textContent=(+p[2])+" "+MONTHS_GEN[+p[1]-1]+", "+DOW_BY_DAY[pkey(schK).getDay()]+(isT?" · сегодня":"");
+  var html="", prevEnd=null, tot=0, dn=0, curEv=null, nxt=null;
+  list.forEach(function(e){
+    var c=catById(e.c), isNow=isT&&nowM>=e.s&&nowM<e.e;
+    var over=list.some(function(o){ return o!==e&&o.s<e.e&&e.s<o.e; });
+    if(prevEnd!==null&&e.s-prevEnd>=15) html+='<li class="gap">Свободно '+scFmt(prevEnd)+'–'+scFmt(e.s)+' · '+scDur(e.s-prevEnd)+'</li>';
+    tot+=e.e-e.s; if(e.d) dn+=e.e-e.s;
+    if(isNow) curEv=e; if(isT&&!nxt&&e.s>nowM) nxt=e;
+    html+='<li class="ev'+(e.d?" done":"")+(isNow?" now":"")+'" data-id="'+esc(e.id)+'" style="--cc:'+safeColor(c&&c.color)+'">'
+      +'<input type="checkbox" data-a="d" aria-label="Выполнено"'+(e.d?" checked":"")+'>'
+      +'<span class="tm">'+scFmt(e.s)+'–'+scFmt(e.e)+'<br><small>'+scDur(e.e-e.s)+'</small></span>'
+      +'<span class="et">'+esc(e.t)+(c?' <small style="color:var(--muted)">· '+esc(c.name)+'</small>':"")+(over?' <span class="warn">⚠ пересечение</span>':"")+'</span>'
+      +'<button class="x" data-a="x" aria-label="Удалить">×</button></li>';
+    prevEnd=prevEnd===null?e.e:Math.max(prevEnd,e.e);
+  });
+  $("schList").innerHTML=html;
+  $("schEmpty").style.display=list.length?"none":"block";
+  var clip=list.map(function(e){ return {s:Math.max(e.s,360),e:Math.min(e.e,1380)}; }).filter(function(e){ return e.e>e.s; });
+  $("schPlan").textContent=scDur(scUnion(list));
+  $("schDone").textContent=pct(dn,tot)+"%";
+  $("schDoneSub").textContent=list.filter(function(e){return e.d;}).length+" из "+list.length+" событий";
+  $("schFree").textContent=scDur(Math.max(0,1020-scUnion(clip)));
+  $("schBar").style.width=pct(dn,tot)+"%";
+  var msg="";
+  if(isT){
+    if(curEv) msg="Сейчас: "+curEv.t+" (до "+scFmt(curEv.e)+")";
+    if(nxt) msg+=(msg?" · ":"")+"Далее: "+nxt.t+" в "+scFmt(nxt.s)+", через "+scDur(nxt.s-nowM);
+  }
+  $("schNow").textContent=msg;
+}
+function schPush(items){
+  var a=(S.sched[schK]=S.sched[schK]||[]);
+  items.forEach(function(i){ a.push({id:uid(),s:i.s,e:i.e,t:i.t,c:i.c||"",d:0}); });
+}
+function addEv(){
+  var s=scMin($("schS").value), er=scMin($("schE").value), t=$("schT").value.trim();
+  if(s===null){ $("schS").focus(); return; }
+  if(!t){ $("schT").focus(); return; }
+  var e=er===null?Math.min(s+60,1439):er;
+  if(e<=s){ alert("Время окончания должно быть позже начала."); return; }
+  schPush([{s:s,e:e,t:t,c:$("schC").value}]);
+  save(); haptic("select");
+  $("schT").value=""; $("schS").value=scFmt(e); $("schE").value="";
+  renderSched(); $("schT").focus();
+}
+$("schDur").innerHTML=[15,30,45,60,90,120].map(function(m){ return '<button data-d="'+m+'">'+scDur(m)+'</button>'; }).join("");
+$("schDur").addEventListener("click",function(e){
+  var b=e.target.closest("[data-d]"), s=scMin($("schS").value); if(!b||s===null) return;
+  $("schE").value=scFmt(Math.min(s+(+b.dataset.d),1439));
+});
+$("schAdd").addEventListener("click",addEv);
+$("schT").addEventListener("keydown",function(e){ if(e.key==="Enter") addEv(); });
+$("schList").addEventListener("change",function(e){
+  var li=e.target.closest("[data-id]"); if(!li||e.target.dataset.a!=="d") return;
+  var ev=(S.sched[schK]||[]).filter(function(x){ return x.id===li.dataset.id; })[0];
+  if(ev){ ev.d=e.target.checked?1:0; save(); haptic(ev.d?"success":"select"); renderSched(); }
+});
+$("schList").addEventListener("click",function(e){
+  var b=e.target.closest('[data-a="x"]'), li=e.target.closest("[data-id]"); if(!b||!li) return;
+  S.sched[schK]=(S.sched[schK]||[]).filter(function(x){ return x.id!==li.dataset.id; });
+  if(!S.sched[schK].length) delete S.sched[schK];
+  save(); haptic("select"); renderSched();
+});
+function schGo(k){ schK=k; renderSched(); }
+$("schPrev").addEventListener("click",function(){ schGo(addDays(schK,-1)); });
+$("schNext").addEventListener("click",function(){ schGo(addDays(schK,1)); });
+$("schToday").addEventListener("click",function(){ schGo(todayKey); });
+$("schSave").addEventListener("click",function(){
+  var list=scEvs(schK); if(!list.length){ alert("Сначала добавь события в этот день."); return; }
+  var name=prompt("Название шаблона:","Обычный день"); if(!name||!name.trim()) return;
+  var t={id:uid(),name:name.trim().slice(0,30),items:list.map(function(e){ return {s:e.s,e:e.e,t:e.t,c:e.c}; })};
+  S.tpl.push(t); save(); fillTpl(); $("schTpl").value=t.id; haptic("success");
+});
+$("schApply").addEventListener("click",function(){
+  var t=S.tpl.filter(function(x){ return x.id===$("schTpl").value; })[0]; if(!t) return;
+  schPush(t.items); save(); haptic("success"); renderSched();
+});
+$("schDelTpl").addEventListener("click",function(){
+  var id=$("schTpl").value; if(!id||!confirm("Удалить выбранный шаблон?")) return;
+  S.tpl=S.tpl.filter(function(x){ return x.id!==id; }); save(); fillTpl();
+});
+$("schCopy").addEventListener("click",function(){
+  var prev=scEvs(addDays(schK,-1));
+  if(!prev.length){ alert("Вчера ничего не было запланировано."); return; }
+  schPush(prev); save(); haptic("success"); renderSched();
+});
+function schShift(n){
+  var a=S.sched[schK]||[]; if(!a.length) return;
+  if(a.some(function(e){ return e.s+n<0||e.e+n>1439; })){ alert("Некоторые события выйдут за пределы суток."); return; }
+  a.forEach(function(e){ e.s+=n; e.e+=n; }); save(); haptic("select"); renderSched();
+}
+$("schBack").addEventListener("click",function(){ schShift(-15); });
+$("schFwd").addEventListener("click",function(){ schShift(15); });
+$("schClear").addEventListener("click",function(){
+  if(S.sched[schK]&&confirm("Удалить все события этого дня?")){ delete S.sched[schK]; save(); renderSched(); }
+});
+setInterval(function(){ if(!$("pageSched").hidden&&schK===todayKey) renderSched(); },60000);
+
 /* ---------- Вкладки ---------- */
-var TABS={plan:["tabPlan","pagePlan"],chal:["tabChal","pageChal"],stat:["tabStat","pageStat"],ach:["tabAch","pageAch"],set:["tabSet","pageSet"]};
+var TABS={plan:["tabPlan","pagePlan"],sched:["tabSched","pageSched"],chal:["tabChal","pageChal"],stat:["tabStat","pageStat"],ach:["tabAch","pageAch"],set:["tabSet","pageSet"]};
 function showTab(name){
   Object.keys(TABS).forEach(function(n){
     var on=n===name;
@@ -1518,6 +1712,7 @@ function showTab(name){
   });
   var pg=$(TABS[name][1]);
   pg.classList.remove("fade"); void pg.offsetWidth; pg.classList.add("fade");
+  if(name==="sched") renderSched();
   if(name==="chal") renderCh();
   if(name==="stat") renderStats();
   if(name==="ach") renderAch();
@@ -1527,6 +1722,7 @@ Object.keys(TABS).forEach(function(n){ $(TABS[n][0]).addEventListener("click",fu
 
 function renderAll(){
   fillDow(); fillCatSelect(); render(); renderCh(); renderSettings();
+  fillSchCats(); fillTpl(); if(!$("pageSched").hidden) renderSched();
   if(!$("pageStat").hidden) renderStats();
   if(!$("pageAch").hidden) renderAch();
 }
@@ -1563,14 +1759,14 @@ document.addEventListener("visibilitychange",function(){
 });
 function cloudPush(){ if(tgCloud) tgPush(); }
 function hasLocalData(){
-  return Object.keys(store).length>0||Object.keys(chStore).length>0||S.rec.length>0||Object.keys(S.notes).length>0;
+  return Object.keys(store).length>0||Object.keys(chStore).length>0||S.rec.length>0||Object.keys(S.notes).length>0||Object.keys(S.sched).length>0;
 }
 function applyRemote(r){
   var lu=getUpdated();
   if(r&&r.updated>lu){
     store=r.tasks||{}; chStore=r.ch||{};
     if(r.v6){
-      S.rec=r.rec||[]; S.notes=r.notes||{};
+      S.rec=r.rec||[]; S.notes=r.notes||{}; S.sched=r.sched||{}; if(r.tpl) S.tpl=r.tpl;
       if(r.sx){ if(Array.isArray(r.sx.cats)) S.cats=r.sx.cats; if(r.sx.set) S.set=Object.assign(S.set,r.sx.set); }
     }
     if(r.ach) S.ach=Object.assign({},S.ach||{},r.ach);
@@ -1596,7 +1792,7 @@ function pack(prefix,map){
   return out;
 }
 function tgChunks(){
-  var out=Object.assign({},pack("t",store),pack("n",S.notes));
+  var out=Object.assign({},pack("t",store),pack("n",S.notes),pack("e",S.sched)); out.p=JSON.stringify(S.tpl);
   S.rec.forEach(function(r){ out["r_"+r.id]=JSON.stringify(r); });
   out.s=JSON.stringify({set:S.set,cats:S.cats});
   if(S.ach) out.a=JSON.stringify(S.ach);
@@ -1623,7 +1819,7 @@ function tgPull(done){
     if(err||!keys||!keys.length){ done(null); return; }
     cs.getItems(keys,function(err2,vals){
       if(err2||!vals){ done(null); return; }
-      var t={}, c={}, n={}, rec=[], sx=null, ach=null, upd=0;
+      var t={}, c={}, n={}, sch={}, tpl=null, rec=[], sx=null, ach=null, upd=0;
       keys.forEach(function(k){
         var v=vals[k]; if(!v) return; lastPushed[k]=v;
         try{
@@ -1632,6 +1828,8 @@ function tgPull(done){
           else if(k==="a") ach=JSON.parse(v);
           else if(k.indexOf("t_")===0) Object.assign(t,JSON.parse(v));
           else if(k.indexOf("n_")===0) Object.assign(n,JSON.parse(v));
+          else if(k.indexOf("e_")===0) Object.assign(sch,JSON.parse(v));
+          else if(k==="p") tpl=JSON.parse(v);
           else if(k.indexOf("r_")===0) rec.push(JSON.parse(v));
           else if(k.indexOf("c_")===0){
             var parts=k.slice(2).split("_");
@@ -1641,7 +1839,7 @@ function tgPull(done){
         }catch(e){}
       });
       Object.keys(c).forEach(function(m){ if(Array.isArray(c[m].items)) c[m].items.sort(function(a,b){ return a.id<b.id?-1:1; }); });
-      done({tasks:t,ch:c,notes:n,rec:rec,sx:sx,ach:ach,v6:!!sx,updated:upd});
+      done({tasks:t,ch:c,notes:n,sched:sch,tpl:tpl,rec:rec,sx:sx,ach:ach,v6:!!sx,updated:upd});
     });
   });
 }
@@ -1664,7 +1862,7 @@ function initTelegram(){
 
 /* Браузер: перенос данных между устройствами через файл. */
 $("exportBtn").addEventListener("click",function(){
-  var data=JSON.stringify({app:"planner",version:6,tasks:store,ch:chStore,v6:{cats:S.cats,rec:S.rec,notes:S.notes,set:S.set,ach:S.ach},exported:Date.now()});
+  var data=JSON.stringify({app:"planner",version:6,tasks:store,ch:chStore,v6:{cats:S.cats,rec:S.rec,notes:S.notes,set:S.set,ach:S.ach,sched:S.sched,tpl:S.tpl},exported:Date.now()});
   var a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));
   a.download="planner-backup-"+todayKey+".json";
@@ -1681,7 +1879,7 @@ $("importFile").addEventListener("change",function(){
       if(!o||!o.tasks||!o.ch||typeof o.tasks!=="object"||typeof o.ch!=="object") throw 0;
       if(confirm("Заменить данные на этом устройстве данными из файла?")){
         store=o.tasks; chStore=o.ch;
-        if(o.v6){ S.cats=o.v6.cats; S.rec=o.v6.rec; S.notes=o.v6.notes; S.set=o.v6.set; if(o.v6.ach) S.ach=o.v6.ach; }
+        if(o.v6){ S.cats=o.v6.cats; S.rec=o.v6.rec; S.notes=o.v6.notes; S.sched=o.v6.sched||{}; S.tpl=o.v6.tpl||[]; S.set=o.v6.set; if(o.v6.ach) S.ach=o.v6.ach; }
         normS(); migrate(); persist(); touch(); applyAccent(); renderAll();
       }
     }catch(e){ alert("Не удалось прочитать файл. Выберите файл, сохранённый этим планером."); }
