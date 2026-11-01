@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Планер задач · версия 10 -->
+<!-- Планер задач · версия 11 -->
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -415,6 +415,29 @@ button.ci:hover{transform:scale(1.08)}
 .ci.sel{outline:3px solid var(--accent);outline-offset:2px}
 .bdg{display:inline-block;animation:a9pop .6s both}
 .t10{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:60;background:var(--surface);color:var(--text);padding:12px 18px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.28);font-weight:700;max-width:92vw;text-align:center;animation:a9pop .4s both}
+
+/* ---- v11: «не выполнено», неделя, подсказки, конфетти, звуки ---- */
+.task.fail .tt{color:var(--muted);text-decoration:line-through;text-decoration-color:#c0392b}
+.m.fl{color:#c0392b;font-weight:700}
+.ico.on{color:#c0392b;background:var(--soft)}
+.wkw{overflow-x:auto;padding-bottom:4px}
+.wk{display:grid;grid-template-columns:repeat(7,minmax(92px,1fr));gap:6px;min-width:660px}
+.wd{background:var(--soft);border-radius:14px;padding:8px 6px;min-height:150px}
+.wd.today{outline:2px solid var(--accent)}
+.wdh{width:100%;background:none;border:0;font-weight:700;text-align:left;padding:3px 4px;border-radius:8px}
+.wdh:hover{background:var(--surface)}
+.we{font-size:.74rem;border-left:3px solid var(--cc,var(--accent));padding:3px 6px;margin-top:5px;background:var(--surface);border-radius:7px;word-break:break-word}
+.we.done{opacity:.55;text-decoration:line-through}
+.we0{color:var(--muted);padding:6px 4px;font-size:.8rem}
+#weekBox{margin-bottom:16px;display:flex;flex-direction:column;gap:16px}
+.wk4{flex-wrap:wrap}
+.wk4 .stat{min-width:130px}
+.insl{margin:0;padding:0;list-style:none}
+.insl li{padding:9px 0;border-bottom:1px solid var(--border)}
+.insl li:last-child{border-bottom:0}
+.eb{position:fixed;left:50%;top:45%;z-index:60;pointer-events:none}
+.eb i{position:absolute;font-style:normal;animation:a11eb 1.4s ease-out forwards}
+@keyframes a11eb{0%{transform:translate(0,0) scale(.4);opacity:1}70%{opacity:1}100%{transform:translate(var(--dx),calc(var(--dy) + 120px)) rotate(var(--r)) scale(1);opacity:0}}
 </style>
 </head>
 <body>
@@ -537,6 +560,7 @@ button.ci:hover{transform:scale(1.08)}
           <button id="schNext" aria-label="Следующий день">›</button>
         </div>
       </div>
+      <div class="seg" id="schView" style="margin-bottom:12px;display:inline-flex"><button data-v="day" aria-pressed="true">День</button><button data-v="week" aria-pressed="false">Неделя</button></div>
       <div class="bar"><div id="schBar"></div></div>
       <div class="sch-sum">
         <div class="stat"><b id="schPlan">0 мин</b><span>запланировано</span></div>
@@ -552,6 +576,7 @@ button.ci:hover{transform:scale(1.08)}
         <button class="btn" id="schAdd">Добавить</button>
       </div>
       <div class="chips" id="schDur" aria-label="Длительность"></div>
+      <div id="schWeek" hidden></div>
       <ul class="tl" id="schList"></ul>
       <div class="empty" id="schEmpty">На этот день событий нет. Добавь первое или примени шаблон.</div>
       <div class="tplrow">
@@ -589,6 +614,7 @@ button.ci:hover{transform:scale(1.08)}
 
   <!-- ========== СТАТИСТИКА ========== -->
   <div id="pageStat" hidden>
+    <div id="weekBox"></div>
     <div class="stats4" id="statTop"></div>
     <section class="card" aria-label="Карта активности">
       <div class="head">
@@ -636,6 +662,8 @@ button.ci:hover{transform:scale(1.08)}
         <label class="chk" style="margin-bottom:10px"><input type="checkbox" id="setFx"> Конфетти, когда закрыты все задачи дня</label>
         <label class="chk"><input type="checkbox" id="setHap"> Вибрация при отметке задачи или дня</label>
         <label class="chk" style="margin-top:10px"><input type="checkbox" id="setSeason"> Сезонные эффекты (листья, снег, цветы)</label>
+        <div class="srow" style="margin:12px 0 0"><b>Стиль конфетти</b><div class="seg" id="cfSeg"><button data-cf="classic">Классика</button><button data-cf="emoji">Эмодзи</button><button data-cf="hearts">Сердца</button><button data-cf="stars">Звёзды</button></div></div>
+        <label class="chk" style="margin-top:10px"><input type="checkbox" id="setSnd"> Мягкие звуки при отметках</label>
       </section>
       <section class="card">
         <h2>Категории</h2>
@@ -725,7 +753,7 @@ function normS(){
   if(!S.g||typeof S.g!=="object"||Array.isArray(S.g)) S.g={};
   S.g=Object.assign({own:[],cd:"",cl:"",chn:0,qd:"",qn:0,rr:{k:"",n:0},badge:"",lv:0},S.g);
   if(!Array.isArray(S.g.own)) S.g.own=[];
-  S.set=Object.assign({accent:"blue",bg:"auto",ws:1,fx:1,hap:1,sp:"auto",name:"",season:1},(S.set&&typeof S.set==="object")?S.set:{});
+  S.set=Object.assign({accent:"blue",bg:"auto",ws:1,fx:1,hap:1,sp:"auto",name:"",season:1,cf:"classic",snd:0},(S.set&&typeof S.set==="object")?S.set:{});
 }
 function migrate(){
   if(!store||typeof store!=="object"||Array.isArray(store)) store={};
@@ -875,16 +903,17 @@ function taskHTML(t){
   if(t.id===editId) return editHTML(t);
   var cat=catById(t.c), subs=t.s||[], open=!!openSet[t.id];
   var late=sel===todayKey&&t.tm&&!t.d&&t.tm<nowHM();
-  var h='<li class="task'+(t.d?" done":"")+(t.i?" imp":"")+(late?" late":"")+(t.id===lastNew?" new":"")+'" data-id="'+t.id+'"><div class="row">'
+  var h='<li class="task'+(t.d?" done":"")+(t.f?" fail":"")+(t.i?" imp":"")+(late?" late":"")+(t.id===lastNew?" new":"")+'" data-id="'+t.id+'"><div class="row">'
     +'<input type="checkbox" data-a="chk" id="t'+t.id+'"'+(t.d?" checked":"")+'><label for="t'+t.id+'"><span class="tt">'+esc(t.t)+'</span>';
   var meta="";
+  if(t.f) meta+='<span class="m fl">✗ Не выполнено</span>';
   if(t.i) meta+='<span class="m imp">★ Важно</span>';
   if(t.tm) meta+='<span class="m tm">⏰ '+esc(t.tm)+'</span>';
   if(cat) meta+='<span class="m"><i style="background:'+safeColor(cat.color)+'"></i>'+esc(cat.name)+'</span>';
   if(t.r) meta+='<span class="m" title="Повторяется">↻</span>';
   if(meta) h+='<span class="meta">'+meta+'</span>';
   var sd=subs.filter(function(x){return x.d;}).length;
-  h+='</label><button class="ico" data-a="ed" title="Редактировать" aria-label="Редактировать">✎</button><button class="ico" data-a="ex" aria-expanded="'+open+'" title="Подзадачи и действия">☰'+(subs.length?" "+sd+"/"+subs.length:"")+'</button>';
+  h+='</label><button class="ico'+(t.f?" on":"")+'" data-a="fail" title="Не выполнил" aria-label="Не выполнил" aria-pressed="'+!!t.f+'">✗</button><button class="ico" data-a="ed" title="Редактировать" aria-label="Редактировать">✎</button><button class="ico" data-a="ex" aria-expanded="'+open+'" title="Подзадачи и действия">☰'+(subs.length?" "+sd+"/"+subs.length:"")+'</button>';
   if(!t.d) h+='<button class="ico" data-a="mv" title="Перенести на '+(sel<todayKey?"сегодня":"завтра")+'" aria-label="Перенести на '+(sel<todayKey?"сегодня":"завтра")+'">→</button>';
   h+='<button class="del" data-a="del" aria-label="Удалить задачу">×</button></div>';
   if(subs.length) h+='<div class="sbar"><div style="width:'+pct(sd,subs.length)+'%"></div></div>';
@@ -911,7 +940,7 @@ function renderDay(){
   lastNew=null;
   $("empty").style.display=t.length?"none":"block";
   var done=t.filter(function(x){return x.d;}).length, a=dayAgg(sel);
-  $("dayStat").textContent=t.length?pct(a.sum,a.cnt)+"% · "+done+" из "+t.length:"";
+  $("dayStat").textContent=t.length?pct(a.sum,a.cnt)+"% · "+done+" из "+t.length+(t.some(function(x){return x.f;})?" · не выполнено: "+t.filter(function(x){return x.f;}).length:""):"";
   $("dayBar").style.width=pct(a.sum,a.cnt)+"%";
   $("clearDay").style.display=t.length?"inline":"none";
   var undone=t.some(function(x){return !x.d;});
@@ -982,7 +1011,7 @@ list.addEventListener("change",function(e){
   var t=tasksOf(sel).filter(function(x){return x.id===li.dataset.id;})[0]; if(!t) return;
   var wasAll=status(sel)==="all";
   if(a==="chk"){
-    t.d=el.checked; if(t.s) t.s.forEach(function(x){ x.d=t.d; });
+    t.d=el.checked; if(t.d) delete t.f; if(t.s) t.s.forEach(function(x){ x.d=t.d; });
     afterToggle(wasAll);
   }else if(a==="schk"){
     var si=+el.closest("li[data-si]").dataset.si;
@@ -1002,6 +1031,9 @@ list.addEventListener("click",function(e){
   if(a==="ed"){
     editId=t.id; renderDay();
     var ei=$("list").querySelector('[data-f="et"]'); if(ei){ ei.focus(); ei.select(); }
+  }else if(a==="fail"){
+    if(t.f) delete t.f; else{ t.f=1; t.d=false; }
+    haptic("select"); save(); render();
   }else if(a==="ecancel"){
     editId=null; renderDay();
   }else if(a==="esave"){
@@ -1365,6 +1397,7 @@ function aggKeys(keys){
   return c?s/c*100:null;
 }
 function renderStats(){
+  renderWeek();
   ensureRange(todayKey);
   var i, k;
   /* верхние показатели */
@@ -1736,6 +1769,8 @@ function fillTpl(){
   if(v) s.value=v;
 }
 function renderSched(){
+  if(schMode==="week"){ renderWeek12(); return; }
+  setSchParts(false);
   var p=schK.split("-"), list=scEvs(schK), cu=new Date(), nowM=cu.getHours()*60+cu.getMinutes(), isT=schK===todayKey;
   $("schTitle").textContent=(+p[2])+" "+MONTHS_GEN[+p[1]-1]+", "+DOW_BY_DAY[pkey(schK).getDay()]+(isT?" · сегодня":"");
   var html="", prevEnd=null, tot=0, dn=0, curEv=null, nxt=null;
@@ -1801,8 +1836,8 @@ $("schList").addEventListener("click",function(e){
   save(); haptic("select"); renderSched();
 });
 function schGo(k){ schK=k; renderSched(); }
-$("schPrev").addEventListener("click",function(){ schGo(addDays(schK,-1)); });
-$("schNext").addEventListener("click",function(){ schGo(addDays(schK,1)); });
+$("schPrev").addEventListener("click",function(){ schGo(addDays(schK,-(schMode==="week"?7:1))); });
+$("schNext").addEventListener("click",function(){ schGo(addDays(schK,schMode==="week"?7:1)); });
 $("schToday").addEventListener("click",function(){ schGo(todayKey); });
 $("schSave").addEventListener("click",function(){
   var list=scEvs(schK); if(!list.length){ alert("Сначала добавь события в этот день."); return; }
@@ -1911,7 +1946,8 @@ function renderHello(){
 }
 function syncSet9(){
   var ni=$("setName"); if(document.activeElement!==ni) ni.value=S.set.name||"";
-  $("setSeason").checked=!!S.set.season;
+  $("setSeason").checked=!!S.set.season; $("setSnd").checked=!!S.set.snd;
+  $("cfSeg").querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed",String(b.dataset.cf===(S.set.cf||"classic"))); });
   $("spSeg").querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed",String(b.dataset.sp===(S.set.sp||"auto"))); });
 }
 $("setName").addEventListener("input",function(){ S.set.name=this.value.slice(0,20); save(); renderHello(); });
@@ -2079,6 +2115,155 @@ function mountSeason(){
 }
 $("setSeason").addEventListener("change",function(){ S.set.season=this.checked?1:0; save(); mountSeason(); });
 mountSeason();
+
+/* ---------- v11: неделя, подсказки, конфетти, звуки, плавная сортировка ---------- */
+function weekDays(){ var a=[]; for(var i=6;i>=0;i--) a.push(addDays(todayKey,-i)); return a; }
+function weekData(){
+  var ds=weekDays(), r={tot:0,done:0,fail:0,closed:0,best:null,bp:-1,chal:0,mins:0};
+  ds.forEach(function(k){
+    var t=tasksOf(k);
+    (S.sched[k]||[]).forEach(function(e){ if(e.d) r.mins+=e.e-e.s; });
+    if(!t.length) return;
+    var d=t.filter(function(x){return x.d;}).length;
+    r.tot+=t.length; r.done+=d; r.fail+=t.filter(function(x){return x.f;}).length;
+    if(d===t.length) r.closed++;
+    var p=pct(d,t.length); if(p>r.bp){ r.bp=p; r.best=k; }
+  });
+  Object.keys(chStore).forEach(function(m){ (chStore[m].items||[]).forEach(function(it){
+    ds.forEach(function(k){
+      if(k.slice(0,7)!==m) return; var dn=+k.slice(8);
+      if((it.done&&it.done[dn])||(it.vals&&+it.vals[dn]>0)) r.chal++;
+    });
+  }); });
+  return r;
+}
+function insights(){
+  var wd=[0,1,2,3,4,5,6].map(function(){ return [0,0]; }), cats={}, tot=0, fail=0, days=0, hrs={};
+  Object.keys(store).forEach(function(k){
+    if(k>todayKey||!store[k].length) return; days++; var g=pkey(k).getDay();
+    store[k].forEach(function(x){
+      wd[g][1]++; tot++; if(x.d) wd[g][0]++; if(x.f) fail++;
+      var c=x.c||""; (cats[c]=cats[c]||[0,0])[1]++; if(x.d) cats[c][0]++;
+    });
+  });
+  Object.keys(S.sched).forEach(function(k){ S.sched[k].forEach(function(e){ if(e.d){ var h=Math.floor(e.s/60); hrs[h]=(hrs[h]||0)+1; } }); });
+  if(tot<10) return ["Нужно больше данных: выполни хотя бы 10 задач, и здесь появятся персональные подсказки."];
+  var out=[], N=["воскресенье","понедельник","вторник","среду","четверг","пятницу","субботу"], b=-1, w=-1, bp=-1, wp=101;
+  wd.forEach(function(v,i){ if(v[1]<3) return; var p=v[0]/v[1]*100; if(p>bp){ bp=p; b=i; } if(p<wp){ wp=p; w=i; } });
+  if(b>=0) out.push("📈 Лучше всего у тебя получается в "+N[b]+": выполняется "+Math.round(bp)+"% задач.");
+  if(w>=0&&w!==b) out.push("📉 Сложнее всего в "+N[w]+" ("+Math.round(wp)+"%). На этот день лучше планировать меньше.");
+  out.push("⚖ В среднем "+(tot/days).toFixed(1).replace(".",",")+" задач в день.");
+  if(fail) out.push("🚫 Не выполнено "+fail+" задач ("+pct(fail,tot)+"%). Помогает разбивать большое на подпункты.");
+  var cb=null, cp=-1;
+  Object.keys(cats).forEach(function(c){ var v=cats[c]; if(c&&catById(c)&&v[1]>=4){ var p=v[0]/v[1]*100; if(p>cp){ cp=p; cb=c; } } });
+  if(cb) out.push("🏷 Лучше всего выполняется категория «"+catById(cb).name+"»: "+Math.round(cp)+"%.");
+  var th=null, tc=0; Object.keys(hrs).forEach(function(h){ if(hrs[h]>tc){ tc=hrs[h]; th=h; } });
+  if(th!==null&&tc>=3) out.push("⏰ Чаще всего ты успеваешь выполнять события около "+pad(+th)+":00.");
+  return out;
+}
+function renderWeek(){
+  var d=weekData(), ds=weekDays(), a=pkey(ds[0]), b=pkey(ds[6]), bk=d.best&&pkey(d.best);
+  $("weekBox").innerHTML='<section class="card"><div class="head"><h2>Итоги недели</h2><span class="gmuted">'+a.getDate()+' '+MONTHS_SHORT[a.getMonth()]+' – '+b.getDate()+' '+MONTHS_SHORT[b.getMonth()]+'</span></div>'
+    +'<div class="stats wk4"><div class="stat"><b>'+pct(d.done,d.tot)+'%</b><span>задач выполнено ('+d.done+' из '+d.tot+')</span></div>'
+    +'<div class="stat"><b>'+d.closed+'</b><span>дней закрыто полностью</span></div>'
+    +'<div class="stat"><b>'+d.chal+'</b><span>отметок в испытаниях</span></div>'
+    +'<div class="stat"><b style="font-size:1.25rem">'+scDur(d.mins)+'</b><span>сделано по расписанию</span></div></div>'
+    +'<p class="gmuted" style="margin:12px 0">'+(bk?"Лучший день: "+bk.getDate()+" "+MONTHS_GEN[bk.getMonth()]+" ("+d.bp+"%). ":"На этой неделе задач пока нет. ")+(d.fail?"Не выполнено: "+d.fail+".":"")+'</p>'
+    +'<button class="btn" id="shareWeek">Поделиться итогами</button></section>'
+    +'<section class="card"><div class="head"><h2>Умные подсказки</h2></div><ul class="insl">'+insights().map(function(s){ return "<li>"+esc(s)+"</li>"; }).join("")+'</ul></section>';
+}
+function shareWeek(){
+  var d=weekData(), ds=weekDays(), a=pkey(ds[0]), b=pkey(ds[6]), c=document.createElement("canvas"), x;
+  c.width=1080; c.height=1350; x=c.getContext("2d");
+  var g=x.createLinearGradient(0,0,1080,1350); g.addColorStop(0,"#7c5cdb"); g.addColorStop(1,"#e8704f");
+  x.fillStyle=g; x.fillRect(0,0,1080,1350); x.fillStyle="#fff";
+  var F='Manrope,system-ui,-apple-system,"Segoe UI",sans-serif';
+  x.font="800 70px "+F; x.fillText("Итоги недели",80,160);
+  x.globalAlpha=.85; x.font="500 38px "+F; x.fillText(a.getDate()+" "+MONTHS_SHORT[a.getMonth()]+" – "+b.getDate()+" "+MONTHS_SHORT[b.getMonth()],80,220);
+  x.globalAlpha=1; x.font="800 300px "+F; x.fillText(pct(d.done,d.tot)+"%",70,560);
+  x.font="500 44px "+F; x.fillText("задач выполнено: "+d.done+" из "+d.tot,80,630);
+  var rows=[["Дней закрыто полностью",d.closed],["Отметок в испытаниях",d.chal],["Сделано по расписанию",scDur(d.mins)],["Уровень",levelInfo().L]];
+  rows.forEach(function(r,i){ var y=780+i*130; x.globalAlpha=.18; x.fillStyle="#fff"; x.fillRect(80,y-70,920,100); x.globalAlpha=1;
+    x.font="500 40px "+F; x.fillText(r[0],110,y); x.font="800 46px "+F; x.textAlign="right"; x.fillText(String(r[1]),970,y); x.textAlign="left"; });
+  x.globalAlpha=.8; x.font="600 34px "+F; x.fillText("Планер",80,1290);
+  c.toBlob(function(bl){
+    if(!bl) return;
+    var f=new File([bl],"week.png",{type:"image/png"});
+    if(navigator.canShare&&navigator.canShare({files:[f]})) navigator.share({files:[f]}).catch(function(){});
+    else{ var l=document.createElement("a"); l.href=URL.createObjectURL(bl); l.download="planner-week.png"; document.body.appendChild(l); l.click(); l.remove(); }
+  });
+}
+$("weekBox").addEventListener("click",function(e){ if(e.target.id==="shareWeek") shareWeek(); });
+
+/* Расписание на неделю */
+var schMode="day";
+function weekStart(k){ return addDays(k,-((pkey(k).getDay()-ws()+7)%7)); }
+function setSchParts(week){
+  [].forEach.call($("pageSched").querySelectorAll(".bar,.sch-sum,.sch-now,.sch-add,.chips,.tl,.empty,.tplrow"),function(el){ el.hidden=week; });
+  $("schWeek").hidden=!week;
+}
+function syncSchView(){ $("schView").querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed",String(b.dataset.v===schMode)); }); }
+function renderWeek12(){
+  setSchParts(true);
+  var st=weekStart(schK), h="", a=pkey(st), b=pkey(addDays(st,6));
+  $("schTitle").textContent=a.getDate()+" "+MONTHS_SHORT[a.getMonth()]+" – "+b.getDate()+" "+MONTHS_SHORT[b.getMonth()];
+  for(var i=0;i<7;i++){
+    var k=addDays(st,i), d=pkey(k), list=scEvs(k);
+    h+='<div class="wd'+(k===todayKey?" today":"")+'"><button class="wdh" data-k="'+k+'">'+DOW_BY_DAY[d.getDay()]+" <b>"+d.getDate()+"</b></button>"
+      +(list.length?list.map(function(e){ var c=catById(e.c); return '<div class="we'+(e.d?" done":"")+'" style="--cc:'+safeColor(c&&c.color)+'"><small>'+scFmt(e.s)+"</small> "+esc(e.t)+"</div>"; }).join(""):'<div class="we0">—</div>')+"</div>";
+  }
+  $("schWeek").innerHTML='<div class="wkw"><div class="wk">'+h+"</div></div>";
+}
+$("schView").addEventListener("click",function(e){ var b=e.target.closest("[data-v]"); if(!b) return; schMode=b.dataset.v; syncSchView(); renderSched(); });
+$("schWeek").addEventListener("click",function(e){ var b=e.target.closest("[data-k]"); if(!b) return; schK=b.dataset.k; schMode="day"; syncSchView(); renderSched(); });
+
+/* Конфетти: стили и звуки */
+var CFS={emoji:["🎉","✨","🎊","⭐"],hearts:["💜","💙","💚","❤️","🧡"],stars:["⭐","🌟","✨","💫"]};
+function emojiBurst(st,n){
+  if(reduced) return;
+  var box=document.createElement("div"); box.className="eb"; var em=CFS[st]||CFS.emoji, cnt=Math.min(36,Math.max(16,Math.round(n/4)));
+  for(var i=0;i<cnt;i++){
+    var s=document.createElement("i"), an=Math.random()*Math.PI*2, d=90+Math.random()*190;
+    s.textContent=em[i%em.length];
+    s.style.cssText="font-size:"+(18+Math.random()*18)+"px;--dx:"+Math.cos(an)*d+"px;--dy:"+(Math.sin(an)*d-110)+"px;--r:"+(Math.random()*500-250)+"deg";
+    box.appendChild(s);
+  }
+  document.body.appendChild(box); setTimeout(function(){ box.remove(); },1500);
+}
+var burst0=burst;
+burst=function(n,y){ var st=S.set.cf||"classic"; if(st==="classic") burst0(n,y); else emojiBurst(st,n); };
+$("cfSeg").addEventListener("click",function(e){ var b=e.target.closest("[data-cf]"); if(!b) return; S.set.cf=b.dataset.cf; save(); syncSet9(); burst(60,.5); });
+var AC=null;
+function tone(f,t0,d,v){
+  var o=AC.createOscillator(), g=AC.createGain(), t=AC.currentTime+t0; o.type="sine"; o.frequency.value=f;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+d+.05);
+}
+function sound(k){
+  if(!S.set.snd) return;
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==="suspended") AC.resume();
+    if(k==="success"){ tone(523,0,.18,.12); tone(659,.09,.18,.12); tone(784,.18,.32,.12); } else tone(k==="select"?660:520,0,.08,.06);
+  }catch(e){}
+}
+var haptic0=haptic;
+haptic=function(k){ haptic0(k); sound(k); };
+$("setSnd").addEventListener("change",function(){ S.set.snd=this.checked?1:0; save(); sound("success"); });
+
+/* Плавная перестановка задач (FLIP) */
+var renderDay0=renderDay, lastRDSel=null;
+renderDay=function(){
+  var pos={}, same=lastRDSel===sel;
+  $("list").querySelectorAll("li.task").forEach(function(li){ pos[li.dataset.id]=li.getBoundingClientRect().top; });
+  renderDay0(); lastRDSel=sel;
+  if(!same||reduced) return;
+  $("list").querySelectorAll("li.task").forEach(function(li){
+    var o=pos[li.dataset.id]; if(o===undefined) return;
+    var dy=o-li.getBoundingClientRect().top; if(Math.abs(dy)<2) return;
+    li.style.transition="none"; li.style.transform="translateY("+dy+"px)";
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ li.style.transition="transform .38s cubic-bezier(.2,.8,.2,1)"; li.style.transform=""; }); });
+  });
+};
 
 /* ---------- Вкладки ---------- */
 var TABS={plan:["tabPlan","pagePlan"],sched:["tabSched","pageSched"],chal:["tabChal","pageChal"],stat:["tabStat","pageStat"],ach:["tabAch","pageAch"],set:["tabSet","pageSet"]};
