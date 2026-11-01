@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Планер задач · версия 7 -->
+<!-- Планер задач · версия 8 -->
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -311,6 +311,44 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
 .gap{color:var(--muted);font-size:.8rem;text-align:center;padding:0 0 8px;list-style:none}
 .tplrow{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:.88rem}
 .tplrow select.fld{width:auto;flex:1;min-width:140px}
+
+/* ---- v8: вкладки, редактирование, дни недели, полный экран, анимации ---- */
+.tabs{position:relative;display:flex;gap:4px;margin:0 0 18px;padding:5px;background:var(--soft);border:1px solid var(--border);border-radius:14px;overflow-x:auto;scrollbar-width:none}
+.tab{position:relative;z-index:1;flex:1 0 auto;background:none;border:0;border-radius:10px;padding:9px 14px;margin:0;color:var(--muted);font-weight:600;transition:color .25s,transform .15s}
+.tab:hover{color:var(--text)}
+.tab:active{transform:scale(.96)}
+.tab.on{color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tab.on{color:#0c1220}}
+:root[data-theme="dark"] .tab.on{color:#0c1220}
+.tab-ind{position:absolute;z-index:0;top:5px;bottom:5px;left:0;width:0;border-radius:10px;background:var(--accent);box-shadow:0 4px 14px rgba(0,0,0,.18);transition:transform .38s cubic-bezier(.4,.2,.2,1),width .38s cubic-bezier(.4,.2,.2,1)}
+.wds{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.wds label{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:42px;padding:6px 11px;border:1px solid var(--border);border-radius:99px;background:var(--soft);cursor:pointer;font-size:.85rem;user-select:none;transition:background .2s,color .2s,border-color .2s,transform .15s}
+.wds input{position:absolute;opacity:0;pointer-events:none}
+.wds label:active{transform:scale(.92)}
+.wds label:has(input:checked){background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .wds label:has(input:checked){color:#0c1220}
+.wds label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.task.editing{background:var(--soft);border-radius:12px;padding:10px 12px;margin:4px 0;animation:slidein .25s ease-out}
+.edit{display:flex;flex-direction:column;gap:8px}
+.edit .opts{margin:0}
+.edit .trow{display:flex;gap:14px;align-items:center}
+body::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;background:radial-gradient(40% 35% at 18% 18%,color-mix(in srgb,var(--accent) 15%,transparent),transparent 70%),radial-gradient(35% 30% at 82% 78%,color-mix(in srgb,var(--ok) 13%,transparent),transparent 70%);animation:a8drift 26s ease-in-out infinite alternate}
+@keyframes a8drift{to{transform:translate3d(3%,2%,0) scale(1.07)}}
+@keyframes a8rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.fade .card,.fade .stat{animation:a8rise .5s cubic-bezier(.2,.7,.2,1) both}
+.fade .card:nth-child(2),.fade .stat:nth-child(2){animation-delay:.07s}
+.fade .stat:nth-child(3){animation-delay:.14s}
+.card{transition:box-shadow .3s,transform .3s}
+.card:hover{box-shadow:0 10px 28px rgba(0,0,0,.08)}
+.bar>div{position:relative;overflow:hidden}
+.bar>div::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent);transform:translateX(-100%);animation:a8shine 3s ease-in-out infinite}
+@keyframes a8shine{60%,100%{transform:translateX(100%)}}
+.day:hover{transform:translateY(-1px)}
+.ico,.del,.link,.btn,.nav button,.today-btn{transition:transform .15s,background-color .2s,color .2s,border-color .2s}
+.ico:active,.del:active,.btn:active,.nav button:active,.today-btn:active{transform:scale(.92)}
+.ev:hover,.task:not(.editing):hover{background-color:var(--soft)}
+:root:fullscreen .wrap{max-width:1360px;padding-left:28px;padding-right:28px}
+:root:fullscreen .grid{gap:22px}
 </style>
 </head>
 <body>
@@ -335,10 +373,12 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
     <h1>Планер</h1>
     <div class="topr">
       <button class="sync" id="syncBtn" hidden></button>
+      <button class="theme" id="fsBtn" aria-label="Полный экран" title="Полный экран" hidden>⛶</button>
       <button class="theme" id="themeBtn" aria-label="Сменить тему">☾</button>
     </div>
   </div>
   <nav class="tabs" role="tablist">
+    <span class="tab-ind" id="tabInd" aria-hidden="true"></span>
     <button class="tab on" id="tabPlan" role="tab" aria-selected="true">Задачи</button>
     <button class="tab" id="tabSched" role="tab" aria-selected="false">Расписание</button>
     <button class="tab" id="tabChal" role="tab" aria-selected="false">Испытания</button>
@@ -394,8 +434,10 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
             <option value="daily">Каждый день</option>
             <option value="weekdays">По будням</option>
             <option value="weekly">Раз в неделю</option>
+            <option value="custom">По дням недели…</option>
           </select>
         </div>
+        <div class="wds" id="newDays" hidden aria-label="Дни недели"><label><input type="checkbox" value="1">Пн</label><label><input type="checkbox" value="2">Вт</label><label><input type="checkbox" value="3">Ср</label><label><input type="checkbox" value="4">Чт</label><label><input type="checkbox" value="5">Пт</label><label><input type="checkbox" value="6">Сб</label><label><input type="checkbox" value="0">Вс</label></div>
         <div class="bar"><div id="dayBar"></div></div>
         <ul id="list"></ul>
         <div class="empty" id="empty">На этот день задач нет. Добавьте первую.</div>
@@ -678,6 +720,7 @@ function recMatch(r,k){
   if(r.f==="d") return true;
   if(r.f==="wd") return g>=1&&g<=5;
   if(r.f==="w") return g===r.w;
+  if(r.f==="c") return (r.ds||[]).indexOf(g)>=0;
   return false;
 }
 function ensureDay(k){
@@ -752,8 +795,9 @@ function cmpT(a,b){
   if(at!==bt){ if(!at) return 1; if(!bt) return -1; return at<bt?-1:1; }
   return a.i-b.i;
 }
-var REP_NAME={d:"Каждый день",wd:"По будням",w:"Раз в неделю"};
+var REP_NAME={d:"Каждый день",wd:"По будням",w:"Раз в неделю",c:"По выбранным дням"};
 function taskHTML(t){
+  if(t.id===editId) return editHTML(t);
   var cat=catById(t.c), subs=t.s||[], open=!!openSet[t.id];
   var late=sel===todayKey&&t.tm&&!t.d&&t.tm<nowHM();
   var h='<li class="task'+(t.d?" done":"")+(t.i?" imp":"")+(late?" late":"")+(t.id===lastNew?" new":"")+'" data-id="'+t.id+'"><div class="row">'
@@ -765,7 +809,7 @@ function taskHTML(t){
   if(t.r) meta+='<span class="m" title="Повторяется">↻</span>';
   if(meta) h+='<span class="meta">'+meta+'</span>';
   var sd=subs.filter(function(x){return x.d;}).length;
-  h+='</label><button class="ico" data-a="ex" aria-expanded="'+open+'" title="Подзадачи и действия">☰'+(subs.length?" "+sd+"/"+subs.length:"")+'</button>';
+  h+='</label><button class="ico" data-a="ed" title="Редактировать" aria-label="Редактировать">✎</button><button class="ico" data-a="ex" aria-expanded="'+open+'" title="Подзадачи и действия">☰'+(subs.length?" "+sd+"/"+subs.length:"")+'</button>';
   if(!t.d) h+='<button class="ico" data-a="mv" title="Перенести на '+(sel<todayKey?"сегодня":"завтра")+'" aria-label="Перенести на '+(sel<todayKey?"сегодня":"завтра")+'">→</button>';
   h+='<button class="del" data-a="del" aria-label="Удалить задачу">×</button></div>';
   if(subs.length) h+='<div class="sbar"><div style="width:'+pct(sd,subs.length)+'%"></div></div>';
@@ -817,13 +861,14 @@ function addTask(){
   var t={id:uid(),t:text,d:false};
   if(cat) t.c=cat; if(imp) t.i=1; if(tm) t.tm=tm;
   if(rep!=="none"){
-    var r={id:uid(),t:text,f:rep==="daily"?"d":rep==="weekdays"?"wd":"w",st:sel};
+    var r={id:uid(),t:text,f:rep==="daily"?"d":rep==="weekdays"?"wd":rep==="custom"?"c":"w",st:sel};
     if(cat) r.c=cat; if(imp) r.i=1; if(tm) r.tm=tm;
     if(r.f==="w") r.w=pkey(sel).getDay();
+    if(r.f==="c"){ r.ds=selDays(); if(!r.ds.length){ alert("Выберите хотя бы один день недели."); return; } }
     S.rec.push(r); t.r=r.id; t.id=r.id+sel.replace(/-/g,"");
   }
-  (store[sel]=tasksOf(sel)).push(t); lastNew=t.id;
-  inp.value=""; $("newTime").value=""; $("newImp").checked=false; $("newRep").value="none";
+  if(!(t.r&&rep==="custom"&&!recMatch(S.rec[S.rec.length-1],sel))){ (store[sel]=tasksOf(sel)).push(t); lastNew=t.id; }
+  inp.value=""; $("newTime").value=""; $("newImp").checked=false; $("newRep").value="none"; syncRepUI();
   save(); render(); inp.focus();
 }
 function afterToggle(wasAll){
@@ -879,7 +924,14 @@ list.addEventListener("click",function(e){
   var a=b.dataset.a; if(a==="chk"||a==="schk"||a==="subin") return;
   var li=b.closest("li.task"); if(!li) return;
   var t=tasksOf(sel).filter(function(x){return x.id===li.dataset.id;})[0]; if(!t) return;
-  if(a==="ex"){
+  if(a==="ed"){
+    editId=t.id; renderDay();
+    var ei=$("list").querySelector('[data-f="et"]'); if(ei){ ei.focus(); ei.select(); }
+  }else if(a==="ecancel"){
+    editId=null; renderDay();
+  }else if(a==="esave"){
+    saveEdit(li,t);
+  }else if(a==="ex"){
     openSet[t.id]=!openSet[t.id]; if(openSet[t.id]) focusSub=t.id; renderDay();
   }else if(a==="mv"){
     moveTask(sel,t,targetKey()); haptic("light"); save(); render();
@@ -906,6 +958,12 @@ list.addEventListener("click",function(e){
   }
 });
 list.addEventListener("keydown",function(e){
+  if(e.target.dataset.f==="et"){
+    var li0=e.target.closest("li.task"), t0=tasksOf(sel).filter(function(x){return x.id===li0.dataset.id;})[0];
+    if(e.key==="Enter"&&t0){ e.preventDefault(); saveEdit(li0,t0); }
+    else if(e.key==="Escape"){ editId=null; renderDay(); }
+    return;
+  }
   if(e.key==="Enter"&&e.target.dataset.a==="subin"){
     var li=e.target.closest("li.task"); var t=tasksOf(sel).filter(function(x){return x.id===li.dataset.id;})[0];
     if(t){ e.preventDefault(); addSub(li,t); }
@@ -1701,6 +1759,64 @@ $("schClear").addEventListener("click",function(){
 });
 setInterval(function(){ if(!$("pageSched").hidden&&schK===todayKey) renderSched(); },60000);
 
+/* ---------- v8: редактирование, дни недели, полный экран, вкладки ---------- */
+var editId=null;
+function editHTML(t){
+  var cats='<option value="">Без категории</option>'+S.cats.map(function(c){ return '<option value="'+esc(c.id)+'"'+(c.id===t.c?" selected":"")+'>'+esc(c.name)+'</option>'; }).join("");
+  var r=t.r&&recById(t.r);
+  return '<li class="task editing" data-id="'+t.id+'"><div class="edit">'
+    +'<input class="fld" data-f="et" maxlength="120" value="'+esc(t.t)+'" aria-label="Название задачи">'
+    +'<div class="opts"><select data-f="ec" aria-label="Категория">'+cats+'</select>'
+    +'<input type="time" data-f="etm" value="'+esc(t.tm||"")+'" aria-label="Время">'
+    +'<label class="chk"><input type="checkbox" data-f="ei"'+(t.i?" checked":"")+'> ★ Важно</label></div>'
+    +(r?'<label class="chk"><input type="checkbox" data-f="eall"> Применить ко всем будущим повторениям</label>':"")
+    +'<div class="trow"><button class="btn" data-a="esave">Сохранить</button><button class="link" data-a="ecancel">Отмена</button></div></div></li>';
+}
+function saveEdit(li,t){
+  var ti=li.querySelector('[data-f="et"]'), v=ti.value.trim(); if(!v){ ti.focus(); return; }
+  var c=li.querySelector('[data-f="ec"]').value, tm=li.querySelector('[data-f="etm"]').value, im=li.querySelector('[data-f="ei"]').checked;
+  var al=li.querySelector('[data-f="eall"]'), all=!!(al&&al.checked);
+  function apply(x){ x.t=v; if(c) x.c=c; else delete x.c; if(tm) x.tm=tm; else delete x.tm; if(im) x.i=1; else delete x.i; }
+  apply(t);
+  if(all&&t.r){
+    var r=recById(t.r); if(r) apply(r);
+    Object.keys(store).forEach(function(k){ if(k>sel) store[k].forEach(function(x){ if(x.r===t.r&&!x.d&&!prog(x)) apply(x); }); });
+  }
+  editId=null; haptic("success"); save(); render();
+}
+function selDays(){ return [].filter.call($("newDays").querySelectorAll("input"),function(i){ return i.checked; }).map(function(i){ return +i.value; }); }
+function syncRepUI(){
+  var on=$("newRep").value==="custom"; $("newDays").hidden=!on;
+  if(!on) [].forEach.call($("newDays").querySelectorAll("input"),function(i){ i.checked=false; });
+}
+$("newRep").addEventListener("change",function(){ syncRepUI(); haptic("select"); });
+
+var fsEl=document.documentElement;
+function fsOn(){ return !!(document.fullscreenElement||document.webkitFullscreenElement||(TG&&TG.isFullscreen)); }
+function fsToggle(){
+  try{
+    if(TG&&TG.requestFullscreen){ if(TG.isFullscreen) TG.exitFullscreen(); else TG.requestFullscreen(); return; }
+    if(fsOn()) (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+    else (fsEl.requestFullscreen||fsEl.webkitRequestFullscreen).call(fsEl);
+  }catch(e){}
+}
+if(fsEl.requestFullscreen||fsEl.webkitRequestFullscreen) $("fsBtn").hidden=false;
+$("fsBtn").addEventListener("click",fsToggle);
+function fsIcon(){ $("fsBtn").textContent=fsOn()?"✕":"⛶"; setTimeout(posInd,60); }
+document.addEventListener("fullscreenchange",fsIcon);
+document.addEventListener("webkitfullscreenchange",fsIcon);
+document.addEventListener("keydown",function(e){
+  if(e.key==="F11"&&fsEl.requestFullscreen&&!/input|textarea|select/i.test((e.target.tagName||""))){ e.preventDefault(); fsToggle(); }
+});
+
+function posInd(){
+  var on=document.querySelector(".tabs .tab.on"), ind=$("tabInd"); if(!on||!ind) return;
+  ind.style.width=on.offsetWidth+"px"; ind.style.transform="translateX("+on.offsetLeft+"px)";
+}
+window.addEventListener("resize",posInd);
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(posInd);
+setTimeout(posInd,50);
+
 /* ---------- Вкладки ---------- */
 var TABS={plan:["tabPlan","pagePlan"],sched:["tabSched","pageSched"],chal:["tabChal","pageChal"],stat:["tabStat","pageStat"],ach:["tabAch","pageAch"],set:["tabSet","pageSet"]};
 function showTab(name){
@@ -1712,6 +1828,8 @@ function showTab(name){
   });
   var pg=$(TABS[name][1]);
   pg.classList.remove("fade"); void pg.offsetWidth; pg.classList.add("fade");
+  posInd();
+  try{ $(TABS[name][0]).scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"}); }catch(e){}
   if(name==="sched") renderSched();
   if(name==="chal") renderCh();
   if(name==="stat") renderStats();
@@ -1849,6 +1967,7 @@ function initTelegram(){
     if(w&&w.initData){
       TG=w;
       try{ w.ready(); w.expand(); }catch(e){}
+      if(w.requestFullscreen) $("fsBtn").hidden=false;
       if(!savedTheme&&w.colorScheme) setTheme(w.colorScheme,false);
       if(w.isVersionAtLeast&&w.isVersionAtLeast("6.9")&&w.CloudStorage){
         tgCloud=true;
