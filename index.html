@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<!-- Планер задач · версия 8 -->
+<!-- Планер задач · версия 9 -->
 <html lang="ru">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Планер задач</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg0:#eef2f1;--soft0:#e4ebea;--surface:#ffffff;--text:#1d2b3a;--muted:#64748b;--border:#d5dde0;
@@ -349,12 +351,52 @@ body::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none
 .ev:hover,.task:not(.editing):hover{background-color:var(--soft)}
 :root:fullscreen .wrap{max-width:1360px;padding-left:28px;padding-right:28px}
 :root:fullscreen .grid{gap:22px}
+
+/* ---- v9: новое оформление ---- */
+body{font-family:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,var(--bg)) 0%,var(--bg) 50%,color-mix(in srgb,var(--ok) 10%,var(--bg)) 100%) fixed}
+h2{font-weight:800;letter-spacing:-.01em}
+.card{border:0;border-radius:24px;padding:20px;box-shadow:0 1px 2px rgba(20,30,60,.04),0 14px 34px rgba(20,30,60,.07)}
+.card:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(20,30,60,.05),0 20px 44px rgba(20,30,60,.12)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .card{box-shadow:0 0 0 1px rgba(255,255,255,.06),0 14px 34px rgba(0,0,0,.35)}}
+:root[data-theme="dark"] .card{box-shadow:0 0 0 1px rgba(255,255,255,.06),0 14px 34px rgba(0,0,0,.35)}
+.top{align-items:center;margin-bottom:18px}
+.hello h1{font-size:clamp(1.45rem,4.2vw,2.15rem);font-weight:800;letter-spacing:-.02em;margin:0;line-height:1.15}
+.hsub{margin:3px 0 0;color:var(--muted);font-size:.95rem}
+.wave{display:inline-block;transform-origin:70% 70%;animation:a9wave 2.2s ease-in-out 2.3s 2}
+@keyframes a9wave{0%,60%,100%{transform:rotate(0)}10%,30%{transform:rotate(16deg)}20%,40%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
+.theme{background:var(--surface);border:0;box-shadow:0 4px 14px rgba(20,30,60,.13)}
+.tabs{background:var(--surface);border:0;border-radius:18px;padding:6px;box-shadow:0 6px 20px rgba(20,30,60,.08)}
+.tab-ind{top:6px;bottom:6px;border-radius:13px;background:var(--accent);background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 62%,#c94fd8))}
+.tab{padding:10px 15px}
+.stat{border-radius:16px;padding:12px 14px}
+.stat b{font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+#pagePlan .stats .stat:nth-child(1),#pageSched .sch-sum .stat:nth-child(1){background:linear-gradient(135deg,#7c5cdb,#e8704f);color:#fff}
+#pagePlan .stats .stat:nth-child(2),#pageSched .sch-sum .stat:nth-child(2){background:linear-gradient(135deg,#1fa65a,#0e8a45);color:#fff}
+#pagePlan .stats .stat span,#pageSched .sch-sum .stat:nth-child(-n+2) span{color:rgba(255,255,255,.88)}
+.btn,.add button{background:var(--accent);background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 70%,#b44fd8));border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,.14)}
+.fld,.add input,.opts select,.opts input[type=time]{border-radius:12px}
+.day{border-radius:14px}
+.ev,.task.editing{border-radius:14px}
+#splash{color:var(--text);overflow:hidden}
+.sp-sub{opacity:0;font-size:.95rem;animation:sp-in .6s ease 1.25s forwards;margin-top:-6px}
+.sp-morning{background:linear-gradient(160deg,#ffe0b5,#ffb9b0 55%,#c9b6ff)!important;color:#3a2a4a!important}
+.sp-day{background:linear-gradient(160deg,#cfe9ff,#eaf6ff 60%,#dff0e6)!important;color:#17324d!important}
+.sp-evening{background:linear-gradient(160deg,#ffb48a,#c46fb5 55%,#4a3f9a)!important;color:#fff!important}
+.sp-night{background:linear-gradient(160deg,#0a1030,#27235c)!important;color:#fff!important}
+.sp-night::before{content:"";position:absolute;inset:0;background-image:radial-gradient(2px 2px at 18% 24%,#fff,transparent),radial-gradient(2px 2px at 72% 16%,#fff,transparent),radial-gradient(1.5px 1.5px at 40% 70%,#fff,transparent),radial-gradient(2px 2px at 86% 62%,#fff,transparent),radial-gradient(1.5px 1.5px at 8% 82%,#fff,transparent),radial-gradient(2px 2px at 56% 38%,#fff,transparent);animation:a9tw 2.6s ease-in-out infinite alternate}
+@keyframes a9tw{from{opacity:.35}to{opacity:1}}
+.spx{width:92px;height:92px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;animation:a9pop .8s cubic-bezier(.2,.9,.3,1.2) both}
+.spx circle{fill:currentColor}
+.sp-spin{transform-origin:32px 32px;animation:a9spin 10s linear infinite}
+@keyframes a9spin{to{transform:rotate(360deg)}}
+@keyframes a9pop{from{opacity:0;transform:scale(.5) translateY(14px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
 <div id="splash" aria-hidden="true">
   <svg viewBox="0 0 64 64" width="72" height="72"><circle class="sp-c" cx="32" cy="32" r="26" transform="rotate(-90 32 32)"/><path class="sp-p" d="M20 33l8 8 16-17"/></svg>
   <div class="sp-t">Планер</div>
+  <div class="sp-sub" id="spSub"></div>
 </div>
 <canvas id="fx" aria-hidden="true"></canvas>
 <div id="toast" hidden role="status"></div>
@@ -370,7 +412,7 @@ body::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none
 
 <div class="wrap">
   <div class="top">
-    <h1>Планер</h1>
+    <div class="hello"><h1 id="hello">Планер</h1><p class="hsub" id="helloSub"></p></div>
     <div class="topr">
       <button class="sync" id="syncBtn" hidden></button>
       <button class="theme" id="fsBtn" aria-label="Полный экран" title="Полный экран" hidden>⛶</button>
@@ -556,6 +598,8 @@ body::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none
         <h2>Внешний вид</h2>
         <div class="srow"><b>Основной цвет</b><div class="swatches" id="accents"></div></div>
         <div class="srow"><b>Цвет фона</b><div class="swatches" id="bgs"></div></div>
+        <div class="srow"><b>Имя в приветствии</b><input class="fld" id="setName" maxlength="20" placeholder="Как к тебе обращаться" style="max-width:230px"></div>
+        <div class="srow"><b>Заставка при запуске</b><div class="seg" id="spSeg"><button data-sp="auto">По времени суток</button><button data-sp="min">Минимал</button><button data-sp="off">Выкл</button></div></div>
         <div class="srow" style="margin-bottom:0"><b>Неделя начинается с</b>
           <div class="seg" id="wsSeg"><button data-ws="1">Понедельника</button><button data-ws="0">Воскресенья</button></div>
         </div>
@@ -650,7 +694,7 @@ function normS(){
   if(!S.notes||typeof S.notes!=="object"||Array.isArray(S.notes)) S.notes={};
   if(!S.sched||typeof S.sched!=="object"||Array.isArray(S.sched)) S.sched={};
   if(!Array.isArray(S.tpl)) S.tpl=[];
-  S.set=Object.assign({accent:"blue",bg:"auto",ws:1,fx:1,hap:1},(S.set&&typeof S.set==="object")?S.set:{});
+  S.set=Object.assign({accent:"blue",bg:"auto",ws:1,fx:1,hap:1,sp:"auto",name:""},(S.set&&typeof S.set==="object")?S.set:{});
 }
 function migrate(){
   if(!store||typeof store!=="object"||Array.isArray(store)) store={};
@@ -852,7 +896,7 @@ function renderDay(){
     focusSub=null;
   }
 }
-function render(){ renderCal(); renderDay(); if($("q").value.trim()) renderSearch(); }
+function render(){ renderCal(); renderDay(); renderHello(); if($("q").value.trim()) renderSearch(); }
 
 function addTask(){
   var inp=$("newTask"), text=inp.value.trim();
@@ -1422,7 +1466,7 @@ function renderSettings(){
     return '<button class="sw bgs" data-bg="'+b.id+'" style="'+st+'" title="'+b.n+'" aria-label="Фон: '+b.n+'" aria-pressed="'+on+'">'+(on?"✓":"")+'</button>';
   }).join("");
   $("wsSeg").querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed",String(+b.dataset.ws===ws())); });
-  $("setFx").checked=!!S.set.fx; $("setHap").checked=!!S.set.hap;
+  $("setFx").checked=!!S.set.fx; $("setHap").checked=!!S.set.hap; syncSet9();
   $("catList").innerHTML=S.cats.length?S.cats.map(function(c){
     return '<div class="catrow" data-id="'+esc(c.id)+'"><input type="color" data-cf="color" value="'+safeColor(c.color).slice(0,7)+'" aria-label="Цвет"><input class="fld" type="text" data-cf="name" maxlength="24" value="'+esc(c.name)+'" aria-label="Название категории"><button class="del" data-ca="del" aria-label="Удалить категорию">×</button></div>';
   }).join(""):'<div class="empty" style="padding:0">Категорий нет. Добавьте первую.</div>';
@@ -1817,6 +1861,71 @@ window.addEventListener("resize",posInd);
 if(document.fonts&&document.fonts.ready) document.fonts.ready.then(posInd);
 setTimeout(posInd,50);
 
+/* ---------- v9: приветствие, заставка, анимация чисел ---------- */
+BGS.push({id:"ocean",n:"Океан",l:["#e3f1f5","#d0e6ee"],d:["#0d1c24","#17323f"]},
+  {id:"paper",n:"Бумага",l:["#f7f3ea","#ece5d4"],d:["#1c1a16","#2f2b22"]},
+  {id:"berry",n:"Ягодный",l:["#f5e9f3","#ead6e6"],d:["#220f1f","#3a1e35"]});
+function greetWord(h){ return h<5?"Доброй ночи":h<12?"Доброе утро":h<18?"Добрый день":h<23?"Добрый вечер":"Доброй ночи"; }
+function userName(){
+  var n=(S.set.name||"").trim(); if(n) return n;
+  try{ var u=TG&&TG.initDataUnsafe&&TG.initDataUnsafe.user; return (u&&u.first_name)||""; }catch(e){ return ""; }
+}
+function renderHello(){
+  var el=$("hello"); if(!el) return;
+  var n=userName(), t=tasksOf(todayKey), d=t.filter(function(x){return x.d;}).length;
+  el.innerHTML=esc(greetWord(new Date().getHours())+(n?", "+n:""))+' <span class="wave">👋</span>';
+  $("helloSub").textContent=t.length?"Сегодня выполнено "+d+" из "+t.length+" задач":"На сегодня задач пока нет";
+}
+function syncSet9(){
+  var ni=$("setName"); if(document.activeElement!==ni) ni.value=S.set.name||"";
+  $("spSeg").querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed",String(b.dataset.sp===(S.set.sp||"auto"))); });
+}
+$("setName").addEventListener("input",function(){ S.set.name=this.value.slice(0,20); save(); renderHello(); });
+$("spSeg").addEventListener("click",function(e){
+  var b=e.target.closest("[data-sp]"); if(!b) return;
+  S.set.sp=b.dataset.sp; save(); syncSet9(); haptic("select");
+});
+
+(function(){
+  var sp=$("splash"), mode=S.set.sp||"auto";
+  if(mode==="off"){ sp.style.display="none"; return; }
+  if(mode!=="auto") return;
+  var h=new Date().getHours(), n=userName(), t=tasksOf(todayKey);
+  var ph=h>=5&&h<11?"morning":h>=11&&h<17?"day":h>=17&&h<22?"evening":"night";
+  var sun='<g class="sp-spin"><circle cx="32" cy="32" r="10"/><path d="M32 8v8M32 48v8M8 32h8M48 32h8M15 15l6 6M43 43l6 6M49 15l-6 6M21 43l-6 6"/></g>';
+  var moon='<path d="M42 10a22 22 0 1 0 12 32 18 18 0 0 1-12-32z" style="fill:currentColor"/>';
+  var svg=sp.querySelector("svg"); svg.setAttribute("class","spx"); svg.innerHTML=ph==="night"?moon:sun;
+  sp.classList.add("sp-"+ph);
+  sp.querySelector(".sp-t").textContent=greetWord(h)+(n?", "+n:"");
+  $("spSub").textContent=t.length?"На сегодня задач: "+t.length:"Свободный день: самое время спланировать его";
+})();
+
+/* Плавный счёт чисел в карточках статистики */
+(function(){
+  if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  function run(el){
+    var txt=el.textContent, m=txt.match(/^(-?\d+(?:[.,]\d+)?)(.*)$/);
+    if(!m||el._busy||el._last===txt) return;
+    var dec=(m[1].split(/[.,]/)[1]||"").length, to=parseFloat(m[1].replace(",",".")), suf=m[2], from=el._val||0, t0=null;
+    if(from===to){ el._last=txt; return; }
+    el._busy=true;
+    function step(ts){
+      if(t0===null) t0=ts;
+      var p=Math.min(1,(ts-t0)/650), e=1-Math.pow(1-p,3), v=from+(to-from)*e;
+      el.textContent=(dec?v.toFixed(dec).replace(".",","):Math.round(v))+suf;
+      if(p<1) requestAnimationFrame(step);
+      else{ el.textContent=txt; el._val=to; el._last=txt; el._busy=false; }
+    }
+    requestAnimationFrame(step);
+  }
+  new MutationObserver(function(ms){
+    ms.forEach(function(m){
+      var n=m.target.nodeType===3?m.target.parentElement:m.target;
+      if(n&&n.matches&&n.matches(".stat b")) run(n);
+    });
+  }).observe(document.body,{subtree:true,childList:true,characterData:true});
+})();
+
 /* ---------- Вкладки ---------- */
 var TABS={plan:["tabPlan","pagePlan"],sched:["tabSched","pageSched"],chal:["tabChal","pageChal"],stat:["tabStat","pageStat"],ach:["tabAch","pageAch"],set:["tabSet","pageSet"]};
 function showTab(name){
@@ -1840,7 +1949,7 @@ Object.keys(TABS).forEach(function(n){ $(TABS[n][0]).addEventListener("click",fu
 
 function renderAll(){
   fillDow(); fillCatSelect(); render(); renderCh(); renderSettings();
-  fillSchCats(); fillTpl(); if(!$("pageSched").hidden) renderSched();
+  fillSchCats(); fillTpl(); if(!$("pageSched").hidden) renderSched(); renderHello();
   if(!$("pageStat").hidden) renderStats();
   if(!$("pageAch").hidden) renderAch();
 }
@@ -1968,6 +2077,7 @@ function initTelegram(){
       TG=w;
       try{ w.ready(); w.expand(); }catch(e){}
       if(w.requestFullscreen) $("fsBtn").hidden=false;
+      renderHello();
       if(!savedTheme&&w.colorScheme) setTheme(w.colorScheme,false);
       if(w.isVersionAtLeast&&w.isVersionAtLeast("6.9")&&w.CloudStorage){
         tgCloud=true;
