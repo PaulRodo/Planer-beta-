@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Планер задач · версия 9 -->
+<!-- Планер задач · версия 10 -->
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -390,9 +390,35 @@ h2{font-weight:800;letter-spacing:-.01em}
 .sp-spin{transform-origin:32px 32px;animation:a9spin 10s linear infinite}
 @keyframes a9spin{to{transform:rotate(360deg)}}
 @keyframes a9pop{from{opacity:0;transform:scale(.5) translateY(14px)}to{opacity:1;transform:none}}
+
+/* ---- v10: уровни, квесты, сундук, коллекция, сезон ---- */
+#season{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+#season i{position:absolute;top:-40px;font-style:normal;animation:a10fall linear infinite}
+@keyframes a10fall{0%{transform:translate(0,-40px) rotate(0)}50%{transform:translate(32px,55vh) rotate(180deg)}100%{transform:translate(-12px,108vh) rotate(360deg)}}
+#gameBox{margin-bottom:16px}
+.gcol{display:flex;flex-direction:column;gap:16px}
+.gcol .head{margin-bottom:8px}
+.lvbig{font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+.gmuted{color:var(--muted);font-size:.88rem}
+.rw{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.rw .tx{flex:1;min-width:160px}
+.chest{font-size:3.4rem;line-height:1;display:inline-block}
+.chest.shake{animation:a10shake .75s ease both}
+@keyframes a10shake{0%,100%{transform:rotate(0)}15%{transform:rotate(-14deg)}30%{transform:rotate(12deg)}45%{transform:rotate(-10deg)}60%{transform:rotate(8deg)}80%{transform:scale(1.28)}}
+.rev{animation:a9pop .6s cubic-bezier(.2,.9,.3,1.2) both}
+.coll{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:8px;margin-top:10px}
+.ci{aspect-ratio:1;border-radius:16px;border:2px solid transparent;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:1.8rem;padding:0;transition:transform .15s}
+button.ci:hover{transform:scale(1.08)}
+.ci.off{filter:grayscale(1);opacity:.35;font-size:1.2rem}
+.ci.r2{border-color:#3b82f6}
+.ci.r3{border-color:#f5b301;box-shadow:0 0 14px rgba(245,179,1,.45)}
+.ci.sel{outline:3px solid var(--accent);outline-offset:2px}
+.bdg{display:inline-block;animation:a9pop .6s both}
+.t10{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:60;background:var(--surface);color:var(--text);padding:12px 18px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.28);font-weight:700;max-width:92vw;text-align:center;animation:a9pop .4s both}
 </style>
 </head>
 <body>
+<div id="season" aria-hidden="true"></div>
 <div id="splash" aria-hidden="true">
   <svg viewBox="0 0 64 64" width="72" height="72"><circle class="sp-c" cx="32" cy="32" r="26" transform="rotate(-90 32 32)"/><path class="sp-p" d="M20 33l8 8 16-17"/></svg>
   <div class="sp-t">Планер</div>
@@ -586,6 +612,7 @@ h2{font-weight:800;letter-spacing:-.01em}
 
   <!-- ========== ДОСТИЖЕНИЯ ========== -->
   <div id="pageAch" hidden>
+    <div id="gameBox"></div>
     <section class="card" id="achTop" aria-label="Итоги"></section>
     <div style="margin:14px 0 0"><div class="seg" id="achSeg"><button data-f="all">Все</button><button data-f="on">Полученные</button><button data-f="off">Не получены</button></div></div>
     <div id="achList"></div>
@@ -608,6 +635,7 @@ h2{font-weight:800;letter-spacing:-.01em}
         <h2>Эффекты</h2>
         <label class="chk" style="margin-bottom:10px"><input type="checkbox" id="setFx"> Конфетти, когда закрыты все задачи дня</label>
         <label class="chk"><input type="checkbox" id="setHap"> Вибрация при отметке задачи или дня</label>
+        <label class="chk" style="margin-top:10px"><input type="checkbox" id="setSeason"> Сезонные эффекты (листья, снег, цветы)</label>
       </section>
       <section class="card">
         <h2>Категории</h2>
@@ -694,7 +722,10 @@ function normS(){
   if(!S.notes||typeof S.notes!=="object"||Array.isArray(S.notes)) S.notes={};
   if(!S.sched||typeof S.sched!=="object"||Array.isArray(S.sched)) S.sched={};
   if(!Array.isArray(S.tpl)) S.tpl=[];
-  S.set=Object.assign({accent:"blue",bg:"auto",ws:1,fx:1,hap:1,sp:"auto",name:""},(S.set&&typeof S.set==="object")?S.set:{});
+  if(!S.g||typeof S.g!=="object"||Array.isArray(S.g)) S.g={};
+  S.g=Object.assign({own:[],cd:"",cl:"",chn:0,qd:"",qn:0,rr:{k:"",n:0},badge:"",lv:0},S.g);
+  if(!Array.isArray(S.g.own)) S.g.own=[];
+  S.set=Object.assign({accent:"blue",bg:"auto",ws:1,fx:1,hap:1,sp:"auto",name:"",season:1},(S.set&&typeof S.set==="object")?S.set:{});
 }
 function migrate(){
   if(!store||typeof store!=="object"||Array.isArray(store)) store={};
@@ -1653,6 +1684,7 @@ $("toast").addEventListener("click",function(){ this.hidden=true; showTab("ach")
 
 var achF="all";
 function renderAch(){
+  renderGame();
   var st=checkAch(false), got=0;
   var has=function(a){ return !!S.ach&&(a.id in S.ach); };
   A.forEach(function(a){ if(has(a)) got++; });
@@ -1873,11 +1905,13 @@ function userName(){
 function renderHello(){
   var el=$("hello"); if(!el) return;
   var n=userName(), t=tasksOf(todayKey), d=t.filter(function(x){return x.d;}).length;
-  el.innerHTML=esc(greetWord(new Date().getHours())+(n?", "+n:""))+' <span class="wave">👋</span>';
-  $("helloSub").textContent=t.length?"Сегодня выполнено "+d+" из "+t.length+" задач":"На сегодня задач пока нет";
+  el.innerHTML=esc(greetWord(new Date().getHours())+(n?", "+n:""))+' <span class="wave">👋</span>'+(S.g.badge?' <span class="bdg">'+esc(badgeEmoji())+'</span>':"");
+  autoQuest(); var lv=levelInfo(); checkLevel(lv);
+  $("helloSub").textContent=(t.length?"Сегодня выполнено "+d+" из "+t.length+" задач":"На сегодня задач пока нет")+" · ⭐ Ур. "+lv.L;
 }
 function syncSet9(){
   var ni=$("setName"); if(document.activeElement!==ni) ni.value=S.set.name||"";
+  $("setSeason").checked=!!S.set.season;
   $("spSeg").querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed",String(b.dataset.sp===(S.set.sp||"auto"))); });
 }
 $("setName").addEventListener("input",function(){ S.set.name=this.value.slice(0,20); save(); renderHello(); });
@@ -1925,6 +1959,126 @@ $("spSeg").addEventListener("click",function(e){
     });
   }).observe(document.body,{subtree:true,childList:true,characterData:true});
 })();
+
+/* ---------- v10: уровни, квесты, сундук, коллекция, сезонные эффекты ---------- */
+var TITLES=["Новичок","Ученик","Практик","Мастер","Эксперт","Легенда"];
+var ITEMS=[
+ {id:"i1",e:"🌱",n:"Росток",r:1},{id:"i2",e:"☕",n:"Кофе",r:1},{id:"i3",e:"📚",n:"Книга",r:1},{id:"i4",e:"🎧",n:"Наушники",r:1},
+ {id:"i5",e:"🍀",n:"Клевер",r:1},{id:"i6",e:"🌈",n:"Радуга",r:1},{id:"i7",e:"🍎",n:"Яблоко",r:1},{id:"i8",e:"🎯",n:"Цель",r:1},
+ {id:"i9",e:"🧩",n:"Пазл",r:1},{id:"i10",e:"🔔",n:"Колокольчик",r:1},{id:"i11",e:"🌻",n:"Подсолнух",r:1},{id:"i12",e:"🛹",n:"Скейт",r:1},
+ {id:"r1",e:"🚀",n:"Ракета",r:2},{id:"r2",e:"🦊",n:"Лис",r:2},{id:"r3",e:"🐙",n:"Осьминог",r:2},{id:"r4",e:"🎸",n:"Гитара",r:2},
+ {id:"r5",e:"🧭",n:"Компас",r:2},{id:"r6",e:"🏆",n:"Кубок",r:2},{id:"r7",e:"🔮",n:"Шар",r:2},{id:"r8",e:"🐉",n:"Дракончик",r:2},
+ {id:"e1",e:"👑",n:"Корона",r:3},{id:"e2",e:"💎",n:"Кристалл",r:3},{id:"e3",e:"🦄",n:"Единорог",r:3},{id:"e4",e:"🌌",n:"Галактика",r:3}
+];
+var RNAME=["","обычный","редкий","эпический"];
+var QUESTS=[
+ {t:"Выпей 2 стакана воды"},{t:"Сделай 10 приседаний или растяжку на 5 минут"},{t:"Прогуляйся 15 минут без телефона"},
+ {t:"Запиши 3 вещи, за которые ты благодарен сегодня"},{t:"Убери рабочий стол за 5 минут"},{t:"Напиши или позвони близкому человеку"},
+ {t:"Почитай 10 минут без отвлечений"},{t:"Ляг спать на 30 минут раньше обычного"},{t:"Съешь сегодня фрукт или овощ"},
+ {t:"Закрой 3 задачи сегодня",a:function(){ return tasksOf(todayKey).filter(function(x){return x.d;}).length>=3; }},
+ {t:"Запланируй день: добавь 2 события в расписание",a:function(){ return (S.sched[todayKey]||[]).length>=2; }},
+ {t:"Отметь настроение дня",a:function(){ return !!(S.notes[todayKey]&&S.notes[todayKey].m); }}
+];
+function toast10(msg){ var d=document.createElement("div"); d.className="t10"; d.textContent=msg; document.body.appendChild(d); setTimeout(function(){ d.remove(); },3400); }
+function itemById(id){ for(var i=0;i<ITEMS.length;i++) if(ITEMS[i].id===id) return ITEMS[i]; return null; }
+function badgeEmoji(){ var it=itemById(S.g.badge); return it?it.e:""; }
+function calcXP(){
+  var x=0;
+  Object.keys(store).forEach(function(k){ store[k].forEach(function(t){ if(t.d) x+=10; }); });
+  Object.keys(S.sched).forEach(function(k){ S.sched[k].forEach(function(e){ if(e.d) x+=3; }); });
+  Object.keys(chStore).forEach(function(m){ (chStore[m].items||[]).forEach(function(it){
+    x+=5*Object.keys(it.done||{}).length;
+    Object.keys(it.vals||{}).forEach(function(d){ if(+it.vals[d]>0) x+=5; });
+  }); });
+  return x+50*Object.keys(S.ach||{}).length+20*(S.g.chn||0)+30*(S.g.qn||0);
+}
+function levelInfo(){
+  var xp=calcXP(), L=1; while(xp>=50*(L+1)*L) L++;
+  return {xp:xp,L:L,lo:50*L*(L-1),hi:50*(L+1)*L,t:TITLES[Math.min(TITLES.length-1,Math.floor((L-1)/3))]};
+}
+function checkLevel(lv){
+  if(S.g.lv===lv.L) return;
+  var up=S.g.lv&&lv.L>S.g.lv; S.g.lv=lv.L; persist();
+  if(up){ toast10("⭐ Новый уровень "+lv.L+": "+lv.t); if(S.set.fx) burst(90,.4); haptic("success"); }
+}
+function curQuest(){
+  var rr=(S.g.rr&&S.g.rr.k===todayKey)?S.g.rr.n:0, h=0;
+  for(var i=0;i<todayKey.length;i++) h=(h*31+todayKey.charCodeAt(i))%9973;
+  return QUESTS[(h+rr)%QUESTS.length];
+}
+function autoQuest(){
+  var q=curQuest();
+  if(q.a&&S.g.qd!==todayKey&&q.a()){ S.g.qn++; S.g.qd=todayKey; save(); toast10("🎯 Квест выполнен! +30 XP"); }
+}
+function renderGame(){
+  var box=$("gameBox"); if(!box) return;
+  var lv=levelInfo(), q=curQuest(), qd=S.g.qd===todayKey, rr=(S.g.rr&&S.g.rr.k===todayKey)?S.g.rr.n:0;
+  var tt=tasksOf(todayKey), dn=tt.filter(function(x){return x.d;}).length, all=status(todayKey)==="all", opened=S.g.cd===todayKey, own=S.g.own;
+  var h='<div class="gcol">';
+  h+='<section class="card"><div class="head"><h2>Уровень</h2><span class="gmuted">'+lv.xp+' XP</span></div>'
+    +'<div class="lvbig">⭐ '+lv.L+' · '+lv.t+'</div><div class="bar"><div style="width:'+pct(lv.xp-lv.lo,lv.hi-lv.lo)+'%"></div></div>'
+    +'<div class="gmuted">До уровня '+(lv.L+1)+': '+(lv.hi-lv.xp)+' XP. Опыт даётся за задачи, события, испытания, достижения, квесты и сундуки.</div></section>';
+  h+='<section class="card"><div class="head"><h2>Квест дня</h2><span class="gmuted">+30 XP</span></div><div class="rw"><span class="chest" style="font-size:2.4rem">🎯</span><div class="tx"><b>'+esc(q.t)+'</b>'
+    +'<div class="gmuted">'+(qd?"✓ Выполнено сегодня":(q.a?"Засчитается автоматически":"Отметь, когда сделаешь"))+'</div></div>'
+    +(qd?"":(q.a?"":'<button class="btn" data-g="qdone">Готово</button>')+(rr<2?'<button class="link" data-g="qroll">Другой квест</button>':""))+'</div></section>';
+  var cl=itemById(S.g.cl);
+  h+='<section class="card"><div class="head"><h2>Сундук дня</h2><span class="gmuted">+20 XP</span></div><div class="rw">';
+  if(opened) h+='<span class="chest rev">'+(cl?cl.e:"🎁")+'</span><div class="tx"><b>'+(cl?esc(cl.n)+" ("+RNAME[cl.r]+")":"Коллекция собрана")+'</b><div class="gmuted">Сегодняшний сундук открыт. Следующий будет завтра.</div></div>';
+  else if(all) h+='<span class="chest" id="chestIco">🎁</span><div class="tx"><b>Все задачи дня закрыты!</b><div class="gmuted">Открой сундук и получи значок в коллекцию.</div></div><button class="btn" data-g="chest">Открыть</button>';
+  else h+='<span class="chest" style="opacity:.55">🔒</span><div class="tx"><b>Закрой все задачи дня</b><div class="gmuted">'+(tt.length?"Сейчас "+dn+" из "+tt.length:"Добавь задачи на сегодня")+', и сундук откроется.</div></div>';
+  h+='</div></section>';
+  h+='<section class="card"><div class="head"><h2>Коллекция</h2><span class="gmuted">'+own.length+' из '+ITEMS.length+'</span></div>'
+    +'<div class="gmuted">Нажми на значок, чтобы поставить его рядом с приветствием. Рамка: синяя редкий, золотая эпический.</div><div class="coll">'
+    +ITEMS.map(function(i){
+      return own.indexOf(i.id)>=0?'<button class="ci r'+i.r+(S.g.badge===i.id?" sel":"")+'" data-g="badge" data-id="'+i.id+'" title="'+esc(i.n)+' ('+RNAME[i.r]+')" aria-label="'+esc(i.n)+'">'+i.e+'</button>':'<div class="ci off r'+i.r+'" title="Ещё не найден">?</div>';
+    }).join("")+'</div></section></div>';
+  box.innerHTML=h;
+}
+$("gameBox").addEventListener("click",function(e){
+  var b=e.target.closest("[data-g]"); if(!b) return; var a=b.dataset.g;
+  if(a==="qdone"&&S.g.qd!==todayKey){
+    S.g.qn++; S.g.qd=todayKey; save(); haptic("success"); if(S.set.fx) burst(60,.5); toast10("🎯 Квест выполнен! +30 XP"); renderGame(); renderHello();
+  }else if(a==="qroll"){
+    var n=(S.g.rr&&S.g.rr.k===todayKey)?S.g.rr.n:0; if(n>=2) return;
+    S.g.rr={k:todayKey,n:n+1}; save(); haptic("select"); renderGame();
+  }else if(a==="badge"){
+    S.g.badge=S.g.badge===b.dataset.id?"":b.dataset.id; save(); haptic("select"); renderGame(); renderHello();
+  }else if(a==="chest"){
+    if(S.g.cd===todayKey||status(todayKey)!=="all") return;
+    var r=Math.random()*100, tier=r<70?1:r<95?2:3;
+    var pool=ITEMS.filter(function(i){ return i.r===tier&&S.g.own.indexOf(i.id)<0; });
+    if(!pool.length) pool=ITEMS.filter(function(i){ return S.g.own.indexOf(i.id)<0; });
+    var it=pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
+    var ico=$("chestIco"); if(ico) ico.classList.add("shake"); b.disabled=true; haptic("light");
+    setTimeout(function(){
+      if(it) S.g.own.push(it.id);
+      S.g.cd=todayKey; S.g.cl=it?it.id:""; S.g.chn=(S.g.chn||0)+1;
+      save(); if(S.set.fx) burst(130,.5); haptic("success"); renderGame(); renderHello();
+    },800);
+  }
+});
+
+function seasonEmojis(d){
+  var m=d.getMonth(), dd=d.getDate();
+  if(m===9&&dd>=24) return ["🎃","🦇","🍂"];
+  if((m===11&&dd>=20)||(m===0&&dd<=10)) return ["❄","🎄","✨"];
+  if(m===11||m<=1) return ["❄","❅","❄"];
+  if(m>=2&&m<=4) return ["🌸","🌿","🌸"];
+  if(m>=5&&m<=7) return ["✨","🌼","✨"];
+  return ["🍂","🍁","🍂"];
+}
+function mountSeason(){
+  var box=$("season"); box.innerHTML="";
+  if(!S.set.season||reduced) return;
+  var em=seasonEmojis(new Date());
+  for(var i=0;i<16;i++){
+    var s=document.createElement("i"); s.textContent=em[i%em.length];
+    s.style.cssText="left:"+Math.random()*100+"%;font-size:"+(12+Math.random()*14)+"px;animation-duration:"+(10+Math.random()*10)+"s;animation-delay:-"+Math.random()*16+"s;opacity:"+(.22+Math.random()*.38);
+    box.appendChild(s);
+  }
+}
+$("setSeason").addEventListener("change",function(){ S.set.season=this.checked?1:0; save(); mountSeason(); });
+mountSeason();
 
 /* ---------- Вкладки ---------- */
 var TABS={plan:["tabPlan","pagePlan"],sched:["tabSched","pageSched"],chal:["tabChal","pageChal"],stat:["tabStat","pageStat"],ach:["tabAch","pageAch"],set:["tabSet","pageSet"]};
@@ -1997,6 +2151,7 @@ function applyRemote(r){
       if(r.sx){ if(Array.isArray(r.sx.cats)) S.cats=r.sx.cats; if(r.sx.set) S.set=Object.assign(S.set,r.sx.set); }
     }
     if(r.ach) S.ach=Object.assign({},S.ach||{},r.ach);
+    if(r.g) S.g=r.g;
     normS(); migrate(); persist();
     try{ localStorage.setItem("planner:updated",String(r.updated)); }catch(e){}
     applyAccent(); renderAll();
@@ -2023,6 +2178,7 @@ function tgChunks(){
   S.rec.forEach(function(r){ out["r_"+r.id]=JSON.stringify(r); });
   out.s=JSON.stringify({set:S.set,cats:S.cats});
   if(S.ach) out.a=JSON.stringify(S.ach);
+  out.g=JSON.stringify(S.g);
   Object.keys(chStore).forEach(function(m){
     chStore[m].items.forEach(function(it){ out["c_"+m+"_"+it.id]=JSON.stringify(it); });
   });
@@ -2046,13 +2202,14 @@ function tgPull(done){
     if(err||!keys||!keys.length){ done(null); return; }
     cs.getItems(keys,function(err2,vals){
       if(err2||!vals){ done(null); return; }
-      var t={}, c={}, n={}, sch={}, tpl=null, rec=[], sx=null, ach=null, upd=0;
+      var t={}, c={}, n={}, sch={}, tpl=null, gg=null, rec=[], sx=null, ach=null, upd=0;
       keys.forEach(function(k){
         var v=vals[k]; if(!v) return; lastPushed[k]=v;
         try{
           if(k==="meta") upd=+v||0;
           else if(k==="s") sx=JSON.parse(v);
           else if(k==="a") ach=JSON.parse(v);
+          else if(k==="g") gg=JSON.parse(v);
           else if(k.indexOf("t_")===0) Object.assign(t,JSON.parse(v));
           else if(k.indexOf("n_")===0) Object.assign(n,JSON.parse(v));
           else if(k.indexOf("e_")===0) Object.assign(sch,JSON.parse(v));
@@ -2066,7 +2223,7 @@ function tgPull(done){
         }catch(e){}
       });
       Object.keys(c).forEach(function(m){ if(Array.isArray(c[m].items)) c[m].items.sort(function(a,b){ return a.id<b.id?-1:1; }); });
-      done({tasks:t,ch:c,notes:n,sched:sch,tpl:tpl,rec:rec,sx:sx,ach:ach,v6:!!sx,updated:upd});
+      done({tasks:t,ch:c,notes:n,sched:sch,tpl:tpl,g:gg,rec:rec,sx:sx,ach:ach,v6:!!sx,updated:upd});
     });
   });
 }
@@ -2091,7 +2248,7 @@ function initTelegram(){
 
 /* Браузер: перенос данных между устройствами через файл. */
 $("exportBtn").addEventListener("click",function(){
-  var data=JSON.stringify({app:"planner",version:6,tasks:store,ch:chStore,v6:{cats:S.cats,rec:S.rec,notes:S.notes,set:S.set,ach:S.ach,sched:S.sched,tpl:S.tpl},exported:Date.now()});
+  var data=JSON.stringify({app:"planner",version:6,tasks:store,ch:chStore,v6:{cats:S.cats,rec:S.rec,notes:S.notes,set:S.set,ach:S.ach,sched:S.sched,tpl:S.tpl,g:S.g},exported:Date.now()});
   var a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));
   a.download="planner-backup-"+todayKey+".json";
@@ -2108,7 +2265,7 @@ $("importFile").addEventListener("change",function(){
       if(!o||!o.tasks||!o.ch||typeof o.tasks!=="object"||typeof o.ch!=="object") throw 0;
       if(confirm("Заменить данные на этом устройстве данными из файла?")){
         store=o.tasks; chStore=o.ch;
-        if(o.v6){ S.cats=o.v6.cats; S.rec=o.v6.rec; S.notes=o.v6.notes; S.sched=o.v6.sched||{}; S.tpl=o.v6.tpl||[]; S.set=o.v6.set; if(o.v6.ach) S.ach=o.v6.ach; }
+        if(o.v6){ S.cats=o.v6.cats; S.rec=o.v6.rec; S.notes=o.v6.notes; S.sched=o.v6.sched||{}; S.tpl=o.v6.tpl||[]; if(o.v6.g) S.g=o.v6.g; S.set=o.v6.set; if(o.v6.ach) S.ach=o.v6.ach; }
         normS(); migrate(); persist(); touch(); applyAccent(); renderAll();
       }
     }catch(e){ alert("Не удалось прочитать файл. Выберите файл, сохранённый этим планером."); }
