@@ -438,6 +438,7 @@ button.ci:hover{transform:scale(1.08)}
 .eb{position:fixed;left:50%;top:45%;z-index:60;pointer-events:none}
 .eb i{position:absolute;font-style:normal;animation:a11eb 1.4s ease-out forwards}
 @keyframes a11eb{0%{transform:translate(0,0) scale(.4);opacity:1}70%{opacity:1}100%{transform:translate(var(--dx),calc(var(--dy) + 120px)) rotate(var(--r)) scale(1);opacity:0}}
+.xrow{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.92rem}.xcur{font-weight:800;color:var(--accent)}
 </style>
 </head>
 <body>
@@ -2011,15 +2012,65 @@ var QUESTS=[
 function toast10(msg){ var d=document.createElement("div"); d.className="t10"; d.textContent=msg; document.body.appendChild(d); setTimeout(function(){ d.remove(); },3400); }
 function itemById(id){ for(var i=0;i<ITEMS.length;i++) if(ITEMS[i].id===id) return ITEMS[i]; return null; }
 function badgeEmoji(){ var it=itemById(S.g.badge); return it?it.e:""; }
-function calcXP(){
-  var x=0;
-  Object.keys(store).forEach(function(k){ store[k].forEach(function(t){ if(t.d) x+=10; }); });
-  Object.keys(S.sched).forEach(function(k){ S.sched[k].forEach(function(e){ if(e.d) x+=3; }); });
+function xpParts(){
+  var p={t:0,e:0,c:0,a:0,q:0,k:0,r:0};
+  Object.keys(store).forEach(function(k){ store[k].forEach(function(t){ if(t.d) p.t+=10; }); });
+  Object.keys(S.sched).forEach(function(k){ S.sched[k].forEach(function(e){ if(e.d) p.e+=3; }); });
   Object.keys(chStore).forEach(function(m){ (chStore[m].items||[]).forEach(function(it){
-    x+=5*Object.keys(it.done||{}).length;
-    Object.keys(it.vals||{}).forEach(function(d){ if(+it.vals[d]>0) x+=5; });
+    p.c+=5*Object.keys(it.done||{}).length;
+    Object.keys(it.vals||{}).forEach(function(d){ if(+it.vals[d]>0) p.c+=5; });
   }); });
-  return x+50*Object.keys(S.ach||{}).length+20*(S.g.chn||0)+30*(S.g.qn||0);
+  p.a=50*Object.keys(S.ach||{}).length; p.k=20*(S.g.chn||0); p.q=30*(S.g.qn||0);
+  p.r=(window.Art&&Art.xp)?Art.xp():0;
+  return p;
+}
+/* Журнал XP: итог = текущие начисления + «сохранённое» (то, что пропало из-за удалений). Опыт не уменьшается. */
+var XPN={t:"Задачи",e:"События",c:"Испытания",a:"Достижения",q:"Квесты",k:"Сундуки",r:"Статьи"}, xpT=0;
+function xpSync(p){
+  var X=S.xl, now=Date.now(), chg=false, sum=0; Object.keys(p).forEach(function(k){ sum+=p[k]; });
+  if(!X||typeof X!=="object"||!X.pp){ X=S.xl={k:0,kd:0,d:todayKey,pp:Object.assign({},p),pk:sum,h:[[now,sum,"init"]]}; chg=true; }
+  else{
+    if(X.d!==todayKey){ X.k+=X.kd; X.kd=0; X.d=todayKey; chg=true; }
+    Object.keys(XPN).forEach(function(k){
+      var d=(p[k]||0)-(X.pp[k]||0); if(!d) return; chg=true; X.pp[k]=p[k]||0;
+      if(d>0){ var rp=Math.min(X.kd,d); X.kd-=rp; if(d-rp>0) X.h.push([now,d-rp,k]); }
+      else{ X.kd-=d; X.h.push([now,d,k]); }
+    });
+  }
+  var tot=sum+X.k+X.kd; if(tot>X.pk){ X.pk=tot; chg=true; }
+  if(chg){
+    while(X.h.length>60||(X.h.length>8&&JSON.stringify(X).length>3500)) X.h.shift();
+    clearTimeout(xpT); xpT=setTimeout(function(){ persist(); touch(); },400);
+  }
+  return tot;
+}
+function calcXP(){ var p=xpParts(); return (S&&S.g)?xpSync(p):0; }
+function xpRows(n){
+  var X=S.xl; if(!X) return "";
+  return X.h.slice(-n).reverse().map(function(e){
+    var d=new Date(e[0]), dt=d.toLocaleDateString("ru",{day:"numeric",month:"short"})+" "+pad(d.getHours())+":"+pad(d.getMinutes());
+    var lab=e[2]==="init"?"Старт журнала (перенесён накопленный XP)":(XPN[e[2]]||e[2]);
+    var v=e[1]>0?'<b style="color:var(--accent)">+'+e[1]+'</b>':'<span class="gmuted">'+e[1]+' (XP сохранён)</span>';
+    return '<div class="xrow"><span>'+dt+' · '+esc(lab)+'</span>'+v+'</div>';
+  }).join("");
+}
+function xpLevelsCard(lv){
+  var rows="", from=Math.max(1,lv.L-1), ti=Math.floor((lv.L-1)/3), nx="";
+  for(var n=from;n<=lv.L+6;n++){
+    var need=50*n*(n-1), cur=n===lv.L;
+    rows+='<div class="xrow'+(cur?" xcur":"")+'"><span>'+(n<lv.L?"✓":cur?"▶":"○")+' Ур. '+n+' · '+TITLES[Math.min(TITLES.length-1,Math.floor((n-1)/3))]+'</span><span class="gmuted">'+need+' XP'+(n>lv.L?" · ещё "+(need-lv.xp):"")+'</span></div>';
+  }
+  if(ti<TITLES.length-1){ var nl=(ti+1)*3+1; nx="до «"+TITLES[ti+1]+"»: "+(50*nl*(nl-1)-lv.xp)+" XP"; }
+  var ranks=TITLES.map(function(t,i){ var n=i*3+1; return "<div class=\"xrow\"><span>"+t+"</span><span class=\"gmuted\">ур. "+n+(i<TITLES.length-1?"–"+(n+2):"+")+" · от "+50*n*(n-1)+" XP</span></div>"; }).join("");
+  return '<section class="card"><div class="head"><h2>Уровни</h2><span class="gmuted">'+nx+'</span></div>'+rows
+    +'<details style="margin-top:8px"><summary class="gmuted">Все звания</summary>'+ranks+'</details></section>';
+}
+function xpJournalCard(){
+  var X=S.xl, kept=X?X.k+X.kd:0;
+  return '<section class="card"><div class="head"><h2>Журнал XP</h2><span class="gmuted">максимум '+(X?X.pk:0)+'</span></div>'
+    +(xpRows(8)||'<div class="gmuted">Пока пусто.</div>')
+    +(X&&X.h.length>8?'<details style="margin-top:8px"><summary class="gmuted">Вся история</summary>'+xpRows(60)+'</details>':'')
+    +'<div class="gmuted" style="margin-top:8px">'+(kept?"Сохранено при удалениях: "+kept+" XP. ":"")+'Если удалить задачу или испытание, набранный XP и уровень не пропадут.</div></section>';
 }
 function levelInfo(){
   var xp=calcXP(), L=1; while(xp>=50*(L+1)*L) L++;
@@ -2046,7 +2097,8 @@ function renderGame(){
   var h='<div class="gcol">';
   h+='<section class="card"><div class="head"><h2>Уровень</h2><span class="gmuted">'+lv.xp+' XP</span></div>'
     +'<div class="lvbig">⭐ '+lv.L+' · '+lv.t+'</div><div class="bar"><div style="width:'+pct(lv.xp-lv.lo,lv.hi-lv.lo)+'%"></div></div>'
-    +'<div class="gmuted">До уровня '+(lv.L+1)+': '+(lv.hi-lv.xp)+' XP. Опыт даётся за задачи, события, испытания, достижения, квесты и сундуки.</div></section>';
+    +'<div class="gmuted">До уровня '+(lv.L+1)+': '+(lv.hi-lv.xp)+' XP. Опыт даётся за задачи, события, испытания, достижения, квесты, сундуки и статьи.</div></section>';
+  h+=xpLevelsCard(lv)+xpJournalCard();
   h+='<section class="card"><div class="head"><h2>Квест дня</h2><span class="gmuted">+30 XP</span></div><div class="rw"><span class="chest" style="font-size:2.4rem">🎯</span><div class="tx"><b>'+esc(q.t)+'</b>'
     +'<div class="gmuted">'+(qd?"✓ Выполнено сегодня":(q.a?"Засчитается автоматически":"Отметь, когда сделаешь"))+'</div></div>'
     +(qd?"":(q.a?"":'<button class="btn" data-g="qdone">Готово</button>')+(rr<2?'<button class="link" data-g="qroll">Другой квест</button>':""))+'</div></section>';
@@ -2330,6 +2382,7 @@ function applyRemote(r){
     }
     if(r.ach) S.ach=Object.assign({},S.ach||{},r.ach);
     if(r.g) S.g=r.g;
+    if(r.xl&&(!S.xl||(r.xl.pk||0)>=(S.xl.pk||0))) S.xl=r.xl;
     normS(); migrate(); persist();
     try{ localStorage.setItem("planner:updated",String(r.updated)); }catch(e){}
     applyAccent(); renderAll();
@@ -2357,6 +2410,7 @@ function tgChunks(){
   out.s=JSON.stringify({set:S.set,cats:S.cats});
   if(S.ach) out.a=JSON.stringify(S.ach);
   out.g=JSON.stringify(S.g);
+  if(S.xl) out.xl=JSON.stringify(S.xl);
   Object.keys(chStore).forEach(function(m){
     chStore[m].items.forEach(function(it){ out["c_"+m+"_"+it.id]=JSON.stringify(it); });
   });
@@ -2380,7 +2434,7 @@ function tgPull(done){
     if(err||!keys||!keys.length){ done(null); return; }
     cs.getItems(keys,function(err2,vals){
       if(err2||!vals){ done(null); return; }
-      var t={}, c={}, n={}, sch={}, tpl=null, gg=null, rec=[], sx=null, ach=null, upd=0;
+      var t={}, c={}, n={}, sch={}, tpl=null, gg=null, xl=null, rec=[], sx=null, ach=null, upd=0;
       keys.forEach(function(k){
         var v=vals[k]; if(!v) return; lastPushed[k]=v;
         try{
@@ -2388,6 +2442,7 @@ function tgPull(done){
           else if(k==="s") sx=JSON.parse(v);
           else if(k==="a") ach=JSON.parse(v);
           else if(k==="g") gg=JSON.parse(v);
+          else if(k==="xl") xl=JSON.parse(v);
           else if(k.indexOf("t_")===0) Object.assign(t,JSON.parse(v));
           else if(k.indexOf("n_")===0) Object.assign(n,JSON.parse(v));
           else if(k.indexOf("e_")===0) Object.assign(sch,JSON.parse(v));
@@ -2401,7 +2456,7 @@ function tgPull(done){
         }catch(e){}
       });
       Object.keys(c).forEach(function(m){ if(Array.isArray(c[m].items)) c[m].items.sort(function(a,b){ return a.id<b.id?-1:1; }); });
-      done({tasks:t,ch:c,notes:n,sched:sch,tpl:tpl,g:gg,rec:rec,sx:sx,ach:ach,v6:!!sx,updated:upd});
+      done({tasks:t,ch:c,notes:n,sched:sch,tpl:tpl,g:gg,xl:xl,rec:rec,sx:sx,ach:ach,v6:!!sx,updated:upd});
     });
   });
 }
@@ -2673,5 +2728,6 @@ window.Art={xp:xp};
 
 })();
 </script>
+<script src="articles.js"></script>
 </body>
 </html>

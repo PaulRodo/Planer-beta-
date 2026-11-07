@@ -29,7 +29,6 @@ st.textContent+=".art-top{position:sticky;top:env(safe-area-inset-top,0px);z-ind
 document.head.appendChild(st);
 
 var _show=showTab; showTab=function(n){ _show(n); if(n==="art") render(); };
-var _cx=calcXP; calcXP=function(){ return _cx()+xp(); };
 
 function A(){ if(!S.g.art||typeof S.g.art!=="object") S.g.art={}; return S.g.art; }
 function xp(){ var s=0,a=(S.g&&S.g.art)||{}; Object.keys(a).forEach(function(k){ s+=+(a[k]&&a[k][1])||0; }); return s; }
