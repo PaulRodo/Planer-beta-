@@ -2503,6 +2503,8 @@ st.textContent+=".al-hero{padding:22px 20px 64px;border-radius:26px;color:#fff;b
 +".al-r{flex:none;color:var(--muted);font-size:1.5rem;line-height:1}"
 +".al-ok{flex:none;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok);font-weight:800}"
 +".al-new{position:absolute;top:-9px;right:16px;padding:4px 12px;border-radius:99px;background:linear-gradient(90deg,#ffb020,#ff7a1a);color:#fff;font-size:.68rem;font-weight:800;letter-spacing:.05em;box-shadow:0 6px 14px rgba(255,122,26,.35)}"
++".art-top{position:fixed;top:calc(env(safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));left:0;right:0;margin:0;z-index:30;padding:8px max(16px,calc((100% - 980px)/2 + 16px));box-shadow:0 6px 18px rgba(20,30,60,.08)}"
++".art-sp{height:calc(56px + env(safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px))}"
 +".art-t b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;line-height:1.25;font-size:.95rem}";
 document.head.appendChild(st);
 
@@ -2523,7 +2525,7 @@ function flush(){ if(dirty){ dirty=false; save(); } }
 function remember(id,v){
   var p=P(); if(v<=(p[id]||0)) return;
   p[id]=v; S.g.apl=id;
-  if(v-lastSaved>=10||v>=100){ lastSaved=v; dirty=false; save(); } else dirty=true;
+  if(v-lastSaved>=3||v>=100){ lastSaved=v; dirty=false; save(); } else dirty=true;
 }
 document.addEventListener("visibilitychange",function(){ if(document.hidden) flush(); });
 window.addEventListener("pagehide",flush);
@@ -2563,12 +2565,12 @@ function render(){
   fetchAll(function(){
     dot();
     var pr=P(), n=items.length, cont=null;
-    if(S.g.apl){ items.forEach(function(a){ if(a.id===S.g.apl&&a.date<=todayKey&&!A()[a.id]&&pr[a.id]>0&&pr[a.id]<100) cont=a; }); }
+    if(S.g.apl){ items.forEach(function(a){ if(a.id===S.g.apl&&a.date<=todayKey&&!A()[a.id]&&pr[a.id]>0) cont=a; }); }
     var h='<div class="al-hero'+(cont?'':' s')+'"><span class="al-pill">📖 '+plur(n).toUpperCase()+'</span><h2>Статьи</h2></div>';
     if(cont){
       var ci=items.indexOf(cont), cp=pr[cont.id];
       h+='<button class="al-btn al-cont" data-id="'+esc(cont.id)+'">'+ico(cont,n-1-ci)
-        +'<span class="al-cm"><span class="al-top"><span class="al-tag">ПРОДОЛЖИТЬ</span><span class="al-pc">'+cp+'%</span></span>'
+        +'<span class="al-cm"><span class="al-top"><span class="al-tag">'+(cp>=100?"ПРОЙТИ ТЕСТ":"ПРОДОЛЖИТЬ")+'</span><span class="al-pc">'+cp+'%</span></span>'
         +'<b>'+esc(cont.title)+'</b><span class="al-bar"><i style="width:'+cp+'%"></i></span></span></button>';
     }
     if(!n){ h+='<div class="empty">Статей пока нет.</div>'; }
@@ -2577,7 +2579,7 @@ function render(){
       items.forEach(function(a,i){
         var done=A()[a.id], lock=a.date>todayKey, p=pr[a.id]||0, k=n-1-i;
         var isNew=!lock&&!done&&!p&&(new Date(todayKey)-new Date(a.date))/864e5<=3;
-        var meta1=lock?"🔒 Откроется "+fd(a.date):"🕒 "+a.readMin+" мин · "+(done?"получено "+done[1]+" XP":"+"+a.xp+" XP")+(!done&&p>0&&p<100?" · "+p+"%":"");
+        var meta1=lock?"🔒 Откроется "+fd(a.date):"🕒 "+a.readMin+" мин · "+(done?"получено "+done[1]+" XP":"+"+a.xp+" XP")+(!done&&p>0?(p>=100?" · пройди тест":" · "+p+"%"):"");
         var right=lock?"":done?'<span class="al-ok">✓</span>':'<span class="al-r">›</span>';
         var inner=ico(a,k)+'<span class="al-tx"><span class="al-tt">'+esc(a.title)+'</span><span class="al-m">'+meta1+'</span>'
           +(lock?'':'<span class="al-m" style="font-weight:600;opacity:.8">'+fdn(a.date)+'</span>')+'</span>'+right+(isNew?'<span class="al-new">НОВИНКА</span>':'');
@@ -2601,8 +2603,8 @@ function openArt(id){
     cur=a; bottom=false; t0=Date.now(); lastSaved=P()[a.id]||0; dirty=false;
     page.innerHTML='<div class="art-r"><div class="art-top"><button class="art-b" id="artBack" aria-label="К списку">‹</button>'
       +'<div class="art-t"><b>'+esc(a.title)+'</b></div>'
-      +'<div class="art-p"><svg viewBox="0 0 36 36"><circle class="bg" cx="18" cy="18" r="15.9155"/><circle class="fg" id="artRing" cx="18" cy="18" r="15.9155" transform="rotate(-90 18 18)"/></svg><span id="artPct">0%</span></div></div>'
-      +'<div class="gmuted">⏱ '+a.readMin+' мин чтения · +'+a.xp+' XP</div><h1>'+esc(a.title)+'</h1><div id="artBody">Загрузка…</div></div>';
+      +'<div class="art-p"><svg viewBox="0 0 36 36"><circle class="bg" cx="18" cy="18" r="15.9155"/><circle class="fg" id="artRing" cx="18" cy="18" r="15.9155" transform="rotate(-90 18 18)" style="stroke-dasharray:'+(P()[a.id]||0)+' 100"/></svg><span id="artPct">'+(P()[a.id]||0)+'%</span></div></div>'
+      +'<div class="art-sp"></div><div class="gmuted">⏱ '+a.readMin+' мин чтения · +'+a.xp+' XP</div><h1>'+esc(a.title)+'</h1><div id="artBody">Загрузка…</div></div>';
     window.scrollTo(0,0);
     fetch("content/"+a._m+"/"+a.file,{cache:"no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(function(t){
       if(cur!==a) return;
@@ -2614,20 +2616,23 @@ function openArt(id){
 function prog(){
   var b=$("artBody"); if(!b||!cur||!$("artPct")) return;
   var r=b.getBoundingClientRect(), tot=r.height-window.innerHeight*0.6, v=Math.round(Math.max(0,Math.min(1,tot>0?-r.top/tot:1))*100);
-  $("artPct").textContent=v+"%"; $("artRing").setAttribute("stroke-dasharray",v+" 100");
   if(!A()[cur.id]) remember(cur.id,v);
+  var mx=Math.max(v,P()[cur.id]||0);
+  $("artPct").textContent=mx+"%"; $("artRing").style.strokeDasharray=mx+" 100";
 }
 window.addEventListener("scroll",prog,{passive:true});
 function watch(a){
-  var need=a.readMin*60*MIN_READ*1000;
-  if("IntersectionObserver" in window) new IntersectionObserver(function(es,o){ if(es[0].isIntersecting){ bottom=true; o.disconnect(); } }).observe($("artEnd"));
-  else bottom=true;
+  var tb=0, DELAY=10000;
+  if("IntersectionObserver" in window) new IntersectionObserver(function(es,o){
+    if(es[0].isIntersecting){ bottom=true; tb=Date.now(); o.disconnect(); if(!A()[a.id]) remember(a.id,100); prog(); }
+  }).observe($("artEnd"));
+  else{ bottom=true; tb=Date.now(); }
   (function tick(){
     if(cur!==a||!$("artQuiz")) return;
-    var left=need-(Date.now()-t0);
+    var left=bottom?DELAY-(Date.now()-tb):DELAY;
     if(bottom&&left<=0){ quiz(a); markRead(a); return; }
-    $("artQuiz").innerHTML='<p class="gmuted">'+(bottom?"Тест откроется через "+Math.ceil(left/1000)+" с. Пока можно перечитать ключевые места.":"Дочитай статью до конца, чтобы открыть тест.")+'</p>';
-    setTimeout(tick,1000);
+    $("artQuiz").innerHTML='<p class="gmuted">'+(bottom?"Тест откроется через "+Math.ceil(left/1000)+" с.":"Дочитай статью до конца, чтобы открыть тест.")+'</p>';
+    setTimeout(tick,500);
   })();
 }
 function markRead(a){
