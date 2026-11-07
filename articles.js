@@ -26,6 +26,11 @@ st.textContent+=".art-top{position:sticky;top:env(safe-area-inset-top,0px);z-ind
 +".art-p{position:relative;width:40px;height:40px;flex:none}.art-p svg{width:100%;height:100%}.art-p circle{fill:none;stroke-width:3.2}.art-p .bg{stroke:var(--soft)}"
 +".art-p .fg{stroke:var(--accent);stroke-linecap:round;stroke-dasharray:0 100;transition:stroke-dasharray .15s}"
 +".art-p span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800}";
+st.textContent+=".art-fig{margin:16px 0;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--soft)}.art-fig img{max-width:100%;border-radius:8px;display:block;margin:0 auto}"
++".art-fig figcaption{margin-bottom:8px}.art-fig small{display:block;color:var(--muted);margin-top:8px;font-size:.78rem}"
++".bc{display:grid;grid-template-columns:minmax(90px,36%) 1fr auto;gap:8px;align-items:center;margin:6px 0;font-size:.88rem}"
++".bt{height:12px;background:var(--border);border-radius:6px;overflow:hidden}.bt i{display:block;height:100%;background:var(--accent);border-radius:6px}"
++".fl{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.fs{padding:6px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-size:.88rem}.fa{color:var(--accent)}";
 document.head.appendChild(st);
 
 var _show=showTab; showTab=function(n){ _show(n); if(n==="art") render(); };
@@ -34,7 +39,18 @@ function A(){ if(!S.g.art||typeof S.g.art!=="object") S.g.art={}; return S.g.art
 function xp(){ var s=0,a=(S.g&&S.g.art)||{}; Object.keys(a).forEach(function(k){ s+=+(a[k]&&a[k][1])||0; }); return s; }
 function fd(d){ var p=d.split("-"); return +p[2]+" "+MONTHS_GEN[p[1]-1]; }
 
-function md(src){
+function chart(j){
+  var d=j.data||[], mx=j.max||Math.max.apply(null,d.map(function(r){ return +r[1]||0; }).concat([1])), u=j.unit||"";
+  return '<figure class="art-fig">'+(j.title?'<figcaption><b>'+esc(j.title)+'</b></figcaption>':'')+d.map(function(r){
+    return '<div class="bc"><span class="bl">'+esc(r[0])+'</span><span class="bt"><i style="width:'+Math.max(2,Math.min(100,100*r[1]/mx))+'%"></i></span><b class="bv">'+(+r[1])+esc(u)+'</b></div>';
+  }).join("")+(j.src?'<small>'+esc(j.src)+'</small>':'')+'</figure>';
+}
+function flow(j){
+  var s=(j.steps||[]).map(function(t,i){ return '<span class="fs">'+(i+1)+'. '+esc(t)+'</span>'; }).join('<b class="fa">→</b>');
+  return '<figure class="art-fig">'+(j.title?'<figcaption><b>'+esc(j.title)+'</b></figcaption>':'')+'<div class="fl">'+s+(j.loop?'<b class="fa">↻</b>':'')+'</div>'+(j.src?'<small>'+esc(j.src)+'</small>':'')+'</figure>';
+}
+function widget(kind,txt){ try{ var j=JSON.parse(txt); return kind==="chart"?chart(j):flow(j); }catch(e){ return ""; } }
+function md(src,base){
   var out=[],list=null,para=[];
   function inl(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*)\*/g,"$1<i>$2</i>"); }
   function fp(){ if(para.length){ out.push("<p>"+inl(para.join(" "))+"</p>"); para=[]; } }
@@ -42,6 +58,8 @@ function md(src){
   src.replace(/\r/g,"").split("\n").forEach(function(l){
     var m;
     if(!l.trim()){ fp(); fl(); return; }
+    if((m=l.match(/^@@(chart|flow)\s+(.*)$/))){ fp(); fl(); out.push(widget(m[1],m[2])); return; }
+    if((m=l.match(/^!\[([^\]]*)\]\(([\w.\/-]+)\)$/))&&m[2].indexOf("..")<0){ fp(); fl(); out.push('<figure class="art-fig"><img loading="lazy" src="'+(base||"")+m[2]+'" alt="'+esc(m[1])+'"><figcaption>'+esc(m[1])+'</figcaption></figure>'); return; }
     if((m=l.match(/^(#{2,3})\s+(.*)/))){ fp(); fl(); out.push("<h"+m[1].length+">"+inl(m[2])+"</h"+m[1].length+">"); return; }
     if((m=l.match(/^>\s?(.*)/))){ fp(); fl(); out.push("<blockquote>"+inl(m[1])+"</blockquote>"); return; }
     if((m=l.match(/^(?:-|\d+\.)\s+(.*)/))){ fp(); var t=/^\d/.test(l)?"ol":"ul"; if(list!==t){ fl(); out.push("<"+t+">"); list=t; } out.push("<li>"+inl(m[1])+"</li>"); return; }
@@ -98,7 +116,7 @@ function openArt(id){
     window.scrollTo(0,0);
     fetch("content/"+a._m+"/"+a.file,{cache:"no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(function(t){
       if(cur!==a) return;
-      $("artBody").innerHTML=md(t)+'<div id="artEnd"></div><div id="artQuiz"></div>'; watch(a); prog();
+      $("artBody").innerHTML=md(t,"content/"+a._m+"/")+'<div id="artEnd"></div><div id="artQuiz"></div>'; watch(a); prog();
     }).catch(function(){ $("artBody").textContent="Не удалось загрузить статью."; });
   });
 }
