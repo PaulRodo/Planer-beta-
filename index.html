@@ -595,7 +595,7 @@ button.ci:hover{transform:scale(1.08)}
   </div>
 
   <div id="pageChal" hidden>
-    <p class="sub">Заведите несколько испытаний на месяц: «сделал / не сделал» или число за день с месячной целью. Награды даются за серии в 7, 14 и 30 дней подряд.</p>
+    <p class="sub">Заведите несколько испытаний на месяц: «сделал / не сделал» или число за день с месячной целью.</p>
     <div class="head">
       <h2 id="chTitle"></h2>
       <div class="nav">
@@ -1289,11 +1289,8 @@ function cardHTML(it,ctx){
     h+='<div class="numin"><label>Значение за '+selDay+" "+MONTHS_GEN[chM]+(it.unit?", "+esc(it.unit):"")+'</label><div class="add"><input type="number" min="0" step="any" inputmode="decimal" data-f="val" value="'+(it.vals[selDay]||"")+'" aria-label="Значение за день"><button data-a="saveval">Сохранить</button></div></div>';
   }
   h+='<div class="stats"><div class="stat"><b>'+pv+'%</b><span>'+(num?(fmtFull(total)+(goal?" из "+fmtFull(goal):"")+(it.unit?" "+esc(it.unit):"")):(done+" из "+ctx.count+" дней"))+'</span></div>'
-    +'<div class="stat"><b>'+streak+'</b><span>текущая серия</span></div><div class="stat"><b>'+best+'</b><span>лучшая серия</span></div></div><div class="badges">';
-  THRESH.forEach(function(t){
-    h+='<span class="bdg'+(best>=t?" on":"")+'" title="'+TIER[t][2]+(best>=t?"":" — ещё не получена")+'">'+badgeMini(t)+t+' дн.</span>';
-  });
-  h+='</div><div class="foot"><span>'+(num?"День с числом больше нуля идёт в серию":"Нажмите на день, чтобы отметить")+'</span><button class="link" data-a="reset">Сбросить месяц</button></div></section>';
+    +'<div class="stat"><b>'+streak+'</b><span>текущая серия</span></div><div class="stat"><b>'+best+'</b><span>лучшая серия</span></div></div>';
+  h+='<div class="foot"><span>'+(num?"День с числом больше нуля идёт в серию":"Нажмите на день, чтобы отметить")+'</span><button class="link" data-a="reset">Сбросить месяц</button></div></section>';
   return h;
 }
 function renderCh(){
@@ -1310,11 +1307,7 @@ function renderCh(){
     chFocus=null;
   }
 }
-function awardCheck(it,before){
-  var after=bestRun(chainSet(it));
-  var crossed=THRESH.filter(function(t){ return before<t&&after>=t; });
-  if(crossed.length) showAward(crossed[crossed.length-1],it.name);
-}
+function awardCheck(it,before){}
 function selDayOf(it){
   var isCur=(chY===now.getFullYear()&&chM===now.getMonth());
   return chSel[it.id]||(isCur?now.getDate():new Date(chY,chM+1,0).getDate());
@@ -2464,5 +2457,6 @@ initTelegram();
 setTimeout(function(){ checkAch(false); },2300);
 })();
 </script>
+<script src="articles.js"></script>
 </body>
 </html>
