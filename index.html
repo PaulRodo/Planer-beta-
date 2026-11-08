@@ -2,6 +2,16 @@
 <!-- Планер задач · версия 11 -->
 <html lang="ru">
 <head>
+<script>
+/* Самообновление: если на сайте есть более новая сборка, страница перезагружается с новым адресом и обходит кэш Telegram. */
+window.APP_BUILD=8;
+(function(){ try{
+  fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
+    if(j&&j.v>window.APP_BUILD&&!sessionStorage.getItem("bld"+j.v)){ sessionStorage.setItem("bld"+j.v,"1"); location.replace(location.pathname+"?v="+j.v+location.hash); }
+  }).catch(function(){});
+}catch(e){} })();
+</script>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Планер задач</title>
@@ -2828,7 +2838,7 @@ function render(){
         +'<div class="gmuted" style="margin-bottom:8px">'+(done?"Получено "+done[1]+" XP":"+"+a.xp+" XP")+'</div>'
         +(lock?"":'<button class="btn" data-id="'+esc(a.id)+'">'+(done?"Перечитать":"Читать")+'</button>')+'</section>';
     });
-    page.innerHTML=h+'<p class="gmuted" style="text-align:center;margin-top:14px">Читалка v7 · графики и схемы включены</p>';
+    page.innerHTML=h+'<p class="gmuted" style="text-align:center;margin-top:14px">Читалка v7 · сборка '+(window.APP_BUILD||"?")+' · графики и схемы включены</p>';
   });
 }
 page.addEventListener("click",function(e){
