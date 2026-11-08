@@ -19,7 +19,9 @@ st.textContent=".art-r{max-width:680px;margin:0 auto}.art-r h1{font-size:1.4rem;
 +".art-r h3{font-size:1.02rem}.art-r p,.art-r li{line-height:1.7}.art-r blockquote{margin:12px 0;padding:10px 14px;border-left:4px solid var(--accent);background:var(--soft);border-radius:8px}"
 +".art-q{margin:14px 0}.art-q .chk{display:block;margin:6px 0}.art-e{color:var(--muted);font-size:.9rem;margin-top:4px}.art-c{margin-bottom:12px}"
 +"#tabArt.hasnew::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:4px;vertical-align:super}";
-st.textContent+=".art-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:10px;margin:0 -16px 10px;padding:8px 16px;background:color-mix(in srgb,var(--surface) 88%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}"
+st.textContent+=".art-ph{min-height:56px;margin:10px 0 8px}.art-top{display:flex;align-items:center;gap:10px;padding:8px 0}"
++".art-top.stuck{position:fixed;left:0;right:0;top:calc(var(--tg-safe-area-inset-top,env(safe-area-inset-top,0px)) + var(--tg-content-safe-area-inset-top,0px));z-index:50;padding:8px 16px;background:color-mix(in srgb,var(--surface) 94%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 2px 12px rgba(0,0,0,.12);animation:artIn .2s ease}"
++"@keyframes artIn{from{transform:translateY(-100%);opacity:0}to{transform:none;opacity:1}}"
 +".art-b{width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--surface);font-size:1.5rem;line-height:1;flex:none}"
 +".art-t{flex:1;min-width:0;text-align:center}.art-t small{display:block;color:var(--accent);font-weight:800;letter-spacing:.05em;font-size:.7rem}"
 +".art-t b{display:block;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
@@ -109,9 +111,9 @@ function openArt(id){
     var a=items.filter(function(x){ return x.id===id; })[0];
     if(!a||a.date>todayKey){ cur=null; return render(); }
     cur=a; bottom=false; t0=Date.now();
-    page.innerHTML='<div class="art-r"><div class="art-top"><button class="art-b" id="artBack" aria-label="К списку">‹</button>'
+    page.innerHTML='<div class="art-r"><i id="artProbe" style="position:fixed;left:0;width:0;height:0;top:calc(var(--tg-safe-area-inset-top,env(safe-area-inset-top,0px)) + var(--tg-content-safe-area-inset-top,0px))"></i><div class="art-ph"><div class="art-top"><button class="art-b" id="artBack" aria-label="К списку">‹</button>'
       +'<div class="art-t"><small>'+esc((a.cat||"Статья").toUpperCase())+'</small><b>'+esc(a.title)+'</b></div>'
-      +'<div class="art-p"><svg viewBox="0 0 36 36"><circle class="bg" cx="18" cy="18" r="15.9155"/><circle class="fg" id="artRing" cx="18" cy="18" r="15.9155" transform="rotate(-90 18 18)"/></svg><span id="artPct">0%</span></div></div>'
+      +'<div class="art-p"><svg viewBox="0 0 36 36"><circle class="bg" cx="18" cy="18" r="15.9155"/><circle class="fg" id="artRing" cx="18" cy="18" r="15.9155" transform="rotate(-90 18 18)"/></svg><span id="artPct">0%</span></div></div></div>'
       +'<div class="gmuted">⏱ '+a.readMin+' мин чтения · +'+a.xp+' XP</div><h1>'+esc(a.title)+'</h1><div id="artBody">Загрузка…</div></div>';
     window.scrollTo(0,0);
     fetch("content/"+a._m+"/"+a.file,{cache:"no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(function(t){
@@ -123,10 +125,12 @@ function openArt(id){
 
 function prog(){
   var b=$("artBody"); if(!b||!cur||!$("artPct")) return;
+  var ph=document.querySelector(".art-ph"), tp=document.querySelector(".art-top"), pr=$("artProbe");
+  if(ph&&tp&&pr) tp.classList.toggle("stuck",ph.getBoundingClientRect().top<pr.getBoundingClientRect().top);
   var r=b.getBoundingClientRect(), tot=r.height-window.innerHeight*0.6, v=Math.round(Math.max(0,Math.min(1,tot>0?-r.top/tot:1))*100);
   $("artPct").textContent=v+"%"; $("artRing").setAttribute("stroke-dasharray",v+" 100");
 }
-window.addEventListener("scroll",prog,{passive:true});
+window.addEventListener("scroll",prog,{passive:true}); window.addEventListener("resize",prog);
 function watch(a){
   var need=a.readMin*60*MIN_READ*1000;
   if("IntersectionObserver" in window) new IntersectionObserver(function(es,o){ if(es[0].isIntersecting){ bottom=true; o.disconnect(); } }).observe($("artEnd"));
