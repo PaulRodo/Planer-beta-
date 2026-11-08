@@ -1,15 +1,27 @@
 <!DOCTYPE html>
-<!-- Планер задач · версия 11 -->
+<!-- Планер задач · сборка 12 -->
 <html lang="ru">
 <head>
 <script>
-/* Самообновление: если на сайте есть более новая сборка, страница перезагружается с новым адресом и обходит кэш Telegram. */
-window.APP_BUILD=8;
-(function(){ try{
-  fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
-    if(j&&j.v>window.APP_BUILD&&!sessionStorage.getItem("bld"+j.v)){ sessionStorage.setItem("bld"+j.v,"1"); location.replace(location.pathname+"?v="+j.v+location.hash); }
-  }).catch(function(){});
-}catch(e){} })();
+/* Самообновление. Номер сборки ОДИН и тот же здесь и в version.json — при каждом релизе поднимай оба.
+   Если на сайте сборка новее, страница перезагружается с ?v=N и обходит кэш Telegram.
+   Проверка идёт при запуске и каждый раз, когда мини-апп снова открывают из свёрнутого состояния. */
+window.APP_BUILD=12;
+(function(){
+  function check(){ try{
+    fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
+      if(j&&+j.v>window.APP_BUILD&&!sessionStorage.getItem("bld"+j.v)){
+        sessionStorage.setItem("bld"+j.v,"1");
+        location.replace(location.pathname+"?v="+j.v+location.hash);
+      }
+    }).catch(function(){});
+  }catch(e){} }
+  check();
+  document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") check(); });
+  document.addEventListener("DOMContentLoaded",function(){
+    var el=document.getElementById("verN"); if(el) el.textContent=window.APP_BUILD;
+  });
+})();
 </script>
 
 <meta charset="utf-8">
@@ -694,7 +706,7 @@ button.ci:hover{transform:scale(1.08)}
         </div>
         <p class="muted" id="cloudNote" hidden style="color:var(--muted);font-size:.85rem;margin:0">Данные автоматически хранятся в облаке Telegram.</p>
       </section>
-      <div class="ver">Планер · версия 6</div>
+      <div class="ver">Планер · сборка <span id="verN"></span></div>
     </div>
   </div>
 </div>
