@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- Планер задач · сборка 14 -->
+<!-- Планер задач · сборка 15 -->
 <html lang="ru">
 <head>
 <script>
 /* Самообновление. Номер сборки ОДИН и тот же здесь и в version.json — при каждом релизе поднимай оба.
    Если на сайте сборка новее, страница перезагружается с ?v=N и обходит кэш Telegram.
    Проверка идёт при запуске и каждый раз, когда мини-апп снова открывают из свёрнутого состояния. */
-window.APP_BUILD=14;
+window.APP_BUILD=15;
 (function(){
   function check(){ try{
     fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
@@ -705,6 +705,15 @@ button.ci:hover{transform:scale(1.08)}
           <input type="file" id="importFile" accept=".json,application/json" hidden>
         </div>
         <p class="muted" id="cloudNote" hidden style="color:var(--muted);font-size:.85rem;margin:0">Данные автоматически хранятся в облаке Telegram.</p>
+        <div class="backup" id="safety">
+          <button class="link" id="syncNowBtn" hidden>Синхронизировать сейчас</button>
+          <button class="link" id="restoreBtn" hidden>Восстановить из автокопии</button>
+        </div>
+        <div class="backup" id="restoreBox" hidden>
+          <select class="fld" id="bakSel" aria-label="Автокопия"></select>
+          <button class="link" id="doRestoreBtn">Восстановить эту копию</button>
+        </div>
+        <p class="muted" id="bakNote" style="color:var(--muted);font-size:.85rem;margin:8px 0 0"></p>
       </section>
       <div class="ver">Планер · сборка <span id="verN"></span></div>
     </div>
@@ -757,7 +766,8 @@ var uid=function(){ return Date.now().toString(36)+Math.random().toString(36).sl
 var norm=function(s){ return String(s||"").trim().toLowerCase(); };
 var esc=function(s){ return String(s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
 var safeColor=function(c){ return /^#[0-9a-f]{3,8}$/i.test(c||"")?c:"#888888"; };
-function load(k,def){ try{ var v=JSON.parse(localStorage.getItem(k)); return (v&&typeof v==="object")?v:def; }catch(e){ return def; } }
+var corrupt=false;
+function load(k,def){ var raw=null; try{ raw=localStorage.getItem(k); var v=JSON.parse(raw); return (v&&typeof v==="object")?v:def; }catch(e){ if(raw) corrupt=true; return def; } }
 
 /* ---------- Данные ---------- */
 var store=load(KEY,{});
@@ -798,8 +808,105 @@ function migrate(){
   });
 }
 normS(); migrate();
+
+/* ---------- Защита данных на устройстве: автокопии, метки изменений записей ---------- */
+var BAKIDX="planner:bakidx", BAKMAX=5, MTKEY="planner:mt", BASEKEY="planner:base";
+var persistFail=false, autoRestored=false, bakTimer=null;
+var tgCloud=false, pushTimer=null, lastPushed={}, cloudReady=false, syncing=false, syncAgain=false, retryN=0, retryT=null;
+var lastMeta="", lastSyncAt=0, lastFull=0, hiddenAt=0, oversize=false;
+
+function h53(str){ var h1=0xdeadbeef, h2=0x41c6ce57, i, c;
+  for(i=0;i<str.length;i++){ c=str.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); }
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return (4294967296*(2097151&h2)+(h1>>>0)).toString(36); }
+function safeParse(j){ try{ return JSON.parse(j); }catch(e){ return undefined; } }
+function deq(a,b){
+  if(a===b) return true;
+  if(typeof a!=="object"||typeof b!=="object"||!a||!b) return false;
+  if(Array.isArray(a)!==Array.isArray(b)) return false;
+  var ka=Object.keys(a), kb=Object.keys(b), i;
+  if(ka.length!==kb.length) return false;
+  for(i=0;i<ka.length;i++){ if(!(ka[i] in b)||!deq(a[ka[i]],b[ka[i]])) return false; }
+  return true;
+}
+function getUpdated(){ try{ return +localStorage.getItem("planner:updated")||0; }catch(e){ return 0; } }
+
+/* Метка времени изменения для каждой записи (день задач, заметка, событие, пункт испытания, привычка и т.д.). */
+var MT=(function(){ var o=null; try{ o=JSON.parse(localStorage.getItem(MTKEY)); }catch(e){} if(!o||typeof o!=="object"||!o.m||!o.h||!o.d) o={m:{},h:{},d:{},c:0,i:0}; return o; })();
+var BASE=(function(){ var o=null; try{ o=JSON.parse(localStorage.getItem(BASEKEY)); }catch(e){} return (o&&typeof o==="object")?o:{}; })();
+function freeSpace(){ try{ var l=bakList(); while(l.length>1){ var x=l.shift(); localStorage.removeItem("planner:bak:"+x.t); } localStorage.setItem(BAKIDX,JSON.stringify(l)); }catch(e){} }
+function saveMT(){ try{ localStorage.setItem(MTKEY,JSON.stringify(MT)); }catch(e){ freeSpace(); try{ localStorage.setItem(MTKEY,JSON.stringify(MT)); }catch(e2){} } }
+function saveBase(){ try{ localStorage.setItem(BASEKEY,JSON.stringify(BASE)); }catch(e){ freeSpace(); try{ localStorage.setItem(BASEKEY,JSON.stringify(BASE)); }catch(e2){ BASE={}; } } }
+function nowTs(){ var t=Math.max(Date.now(),(MT.c||0)+1); MT.c=t; return t; }
+function records(){
+  var o={}, k, m;
+  for(k in store){ if(Array.isArray(store[k])&&store[k].length) o["t:"+k]=JSON.stringify(store[k]); }
+  for(k in S.notes){ if(S.notes[k]!=null&&S.notes[k]!=="") o["n:"+k]=JSON.stringify(S.notes[k]); }
+  for(k in S.sched){ if(Array.isArray(S.sched[k])&&S.sched[k].length) o["e:"+k]=JSON.stringify(S.sched[k]); }
+  for(m in chStore){ ((chStore[m]&&chStore[m].items)||[]).forEach(function(it){ o["c:"+m+":"+it.id]=JSON.stringify(it); }); }
+  S.rec.forEach(function(r){ o["r:"+r.id]=JSON.stringify(r); });
+  o.p=JSON.stringify(S.tpl); o.s=JSON.stringify({set:S.set,cats:S.cats}); o.g=JSON.stringify(S.g);
+  if(S.ach) o.a=JSON.stringify(S.ach);
+  if(S.xl) o.xl=JSON.stringify(S.xl);
+  return o;
+}
+function stamp(){
+  var cur=records(), ch=false, k, x, t=0, now=Date.now();
+  if(!MT.i){
+    t=getUpdated()||1; for(k in cur){ MT.h[k]=h53(cur[k]); MT.m[k]=t; } MT.i=1; MT.c=Math.max(MT.c||0,t); saveMT(); return true;
+  }
+  for(k in cur){ x=h53(cur[k]); if(MT.h[k]!==x){ if(!t) t=nowTs(); MT.h[k]=x; MT.m[k]=t; delete MT.d[k]; ch=true; } }
+  for(k in MT.h){ if(!(k in cur)){ if(!t) t=nowTs(); delete MT.h[k]; MT.m[k]=t; MT.d[k]=1; ch=true; } }
+  for(k in MT.d){ if(now-MT.m[k]>60*864e5){ delete MT.d[k]; delete MT.m[k]; ch=true; } }
+  if(ch) saveMT();
+  return ch;
+}
+function rehash(){ var cur=records(), k; for(k in cur) MT.h[k]=h53(cur[k]); for(k in MT.h){ if(!(k in cur)) delete MT.h[k]; } saveMT(); }
+function hasLocalData(){
+  return Object.keys(store).some(function(k){ return store[k]&&store[k].length; })||Object.keys(chStore).length>0||S.rec.length>0||Object.keys(S.notes).length>0||Object.keys(S.sched).length>0;
+}
+function countTasks(){ var n=0; Object.keys(store).forEach(function(k){ n+=(store[k]||[]).length; }); return n; }
+
+/* Автокопии (до 5 штук на устройстве). Обычная — не чаще раза в 6 часов, перед опасными операциями — принудительно. */
+function bakList(){ var a=load(BAKIDX,[]); return Array.isArray(a)?a:[]; }
+function makeBackup(why,gap){
+  try{
+    if(!hasLocalData()) return;
+    var list=bakList(), now=Date.now(), last=list[list.length-1];
+    if(gap==null) gap=6*3600*1000;
+    if(last&&now-last.t<gap) return;
+    var d=JSON.stringify({store:store,ch:chStore,S:S}), h=h53(d);
+    if(last&&last.h===h) return;
+    var id="planner:bak:"+now;
+    try{ localStorage.setItem(id,d); }catch(e){
+      if(list.length){ var o=list.shift(); localStorage.removeItem("planner:bak:"+o.t); try{ localStorage.setItem(id,d); }catch(e2){ return; } } else return;
+    }
+    list.push({t:now,why:why||"авто",n:countTasks(),h:h});
+    while(list.length>BAKMAX){ var x=list.shift(); try{ localStorage.removeItem("planner:bak:"+x.t); }catch(e){} }
+    localStorage.setItem(BAKIDX,JSON.stringify(list));
+    try{ renderSafety(); }catch(e){}
+  }catch(e){}
+}
+function replaceState(st,ch,sx){
+  Object.keys(store).forEach(function(k){ delete store[k]; }); Object.keys(st||{}).forEach(function(k){ store[k]=st[k]; });
+  Object.keys(chStore).forEach(function(k){ delete chStore[k]; }); Object.keys(ch||{}).forEach(function(k){ chStore[k]=ch[k]; });
+  Object.keys(S).forEach(function(k){ delete S[k]; }); Object.keys(sx||{}).forEach(function(k){ S[k]=sx[k]; });
+}
+function readBackup(t){ try{ var o=JSON.parse(localStorage.getItem("planner:bak:"+t)); return (o&&o.store&&o.ch&&o.S)?o:null; }catch(e){ return null; } }
+/* Если основные данные на устройстве повреждены — тихо поднимаем последнюю автокопию. */
+if(corrupt){ try{ var _bl=bakList(), _o=_bl.length&&readBackup(_bl[_bl.length-1].t); if(_o){ replaceState(_o.store,_o.ch,_o.S); normS(); migrate(); persist(); autoRestored=true; } }catch(e){} }
+try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+setTimeout(function(){ makeBackup("авто"); },4000);
+
 function persist(){
-  try{ localStorage.setItem(KEY,JSON.stringify(store)); localStorage.setItem(SKEY,JSON.stringify(S)); localStorage.setItem(CKEY,JSON.stringify(chStore)); }catch(e){}
+  function w(){ localStorage.setItem(KEY,JSON.stringify(store)); localStorage.setItem(SKEY,JSON.stringify(S)); localStorage.setItem(CKEY,JSON.stringify(chStore)); }
+  try{ w(); persistFail=false; }
+  catch(e){
+    freeSpace();
+    try{ w(); persistFail=false; }
+    catch(e2){ if(!persistFail){ persistFail=true; try{ toast10("⚠ Не удалось сохранить на устройстве — место закончилось"); }catch(_){} } }
+  }
 }
 var achTimer=null;
 function save(){ persist(); touch(); clearTimeout(achTimer); achTimer=setTimeout(function(){ checkAch(false); },500); }
@@ -2369,12 +2476,11 @@ function refreshToday(){
   renderAll();
 }
 
-/* ---------- Синхронизация между устройствами ---------- */
-var tgCloud=false, pushTimer=null, lastPushed={};
-function getUpdated(){ try{ return +localStorage.getItem("planner:updated")||0; }catch(e){ return 0; } }
+/* ---------- Синхронизация между устройствами (v2: слияние по записям) ---------- */
 function touch(){
   try{ localStorage.setItem("planner:updated",String(Date.now())); }catch(e){}
-  schedulePush();
+  stamp(); schedulePush();
+  clearTimeout(bakTimer); bakTimer=setTimeout(function(){ makeBackup("авто"); },5000);
 }
 function loadScript(src,ok,fail){
   var s=document.createElement("script"); s.src=src; s.async=true;
@@ -2384,36 +2490,63 @@ function loadScript(src,ok,fail){
 function schedulePush(){
   if(!tgCloud) return;
   clearTimeout(pushTimer);
-  pushTimer=setTimeout(function(){ pushTimer=null; cloudPush(); },800);
+  pushTimer=setTimeout(function(){ pushTimer=null; syncNow("push"); },800);
 }
 document.addEventListener("visibilitychange",function(){
-  if(document.hidden){ if(pushTimer){ clearTimeout(pushTimer); pushTimer=null; cloudPush(); } }
-  else refreshToday();
+  if(document.hidden){ hiddenAt=Date.now(); if(pushTimer){ clearTimeout(pushTimer); pushTimer=null; syncNow("hide"); } }
+  else{ refreshToday(); if(tgCloud) syncNow("show",Date.now()-hiddenAt>30000); }
 });
-function cloudPush(){ if(tgCloud) tgPush(); }
-function hasLocalData(){
-  return Object.keys(store).length>0||Object.keys(chStore).length>0||S.rec.length>0||Object.keys(S.notes).length>0||Object.keys(S.sched).length>0;
-}
-function applyRemote(r){
-  var lu=getUpdated();
-  if(r&&r.updated>lu){
-    store=r.tasks||{}; chStore=r.ch||{};
-    if(r.v6){
-      S.rec=r.rec||[]; S.notes=r.notes||{}; S.sched=r.sched||{}; if(r.tpl) S.tpl=r.tpl;
-      if(r.sx){ if(Array.isArray(r.sx.cats)) S.cats=r.sx.cats; if(r.sx.set) S.set=Object.assign(S.set,r.sx.set); }
-    }
-    if(r.ach) S.ach=Object.assign({},S.ach||{},r.ach);
-    if(r.g) S.g=r.g;
-    if(r.xl&&(!S.xl||(r.xl.pk||0)>=(S.xl.pk||0))) S.xl=r.xl;
-    normS(); migrate(); persist();
-    try{ localStorage.setItem("planner:updated",String(r.updated)); }catch(e){}
-    applyAccent(); renderAll();
-  }else if(hasLocalData()&&(!r||lu>(r.updated||0))){
-    cloudPush();
+window.addEventListener("pagehide",function(){ if(pushTimer){ clearTimeout(pushTimer); pushTimer=null; syncNow("hide"); } });
+window.addEventListener("online",function(){ if(!TG) initTelegram(); else syncNow("online",true); });
+setInterval(function(){ if(tgCloud&&!document.hidden) syncNow("poll"); },60000);
+
+/* Объединение двух версий одной записи с учётом общей «базы» (трёхстороннее слияние). */
+function idArr(a){ var s={}; return a.every(function(x){ if(!x||typeof x!=="object"||x.id==null||s[x.id]) return false; s[x.id]=1; return true; }); }
+function m3(b,l,r,rn,mx){
+  if(deq(l,r)) return l;
+  if(b!==undefined&&deq(b,l)) return r;
+  if(b!==undefined&&deq(b,r)) return l;
+  var al=Array.isArray(l), ar=Array.isArray(r);
+  if(al&&ar&&idArr(l)&&idArr(r)){
+    var ba=(Array.isArray(b)&&idArr(b))?b:[], bm={}, lm={}, rm={}, out=[], seen={};
+    ba.forEach(function(x){ bm[x.id]=x; }); l.forEach(function(x){ lm[x.id]=x; }); r.forEach(function(x){ rm[x.id]=x; });
+    (rn?r.concat(l):l.concat(r)).forEach(function(x){
+      var id=x.id; if(seen[id]) return; seen[id]=1;
+      var inB=(id in bm), inL=(id in lm), inR=(id in rm);
+      if(inL&&inR){ out.push(m3(bm[id],lm[id],rm[id],rn,mx)); return; }
+      if(inB){ var other=inL?lm[id]:rm[id]; if(deq(other,bm[id])) return; out.push(other); return; }   // удалено на одной стороне; если на другой правили — оставляем
+      out.push(x);
+    });
+    return out;
   }
+  if(!al&&!ar&&l&&r&&typeof l==="object"&&typeof r==="object"){
+    var bo=(b&&typeof b==="object"&&!Array.isArray(b))?b:{}, res={}, ks={}, k;
+    Object.keys(l).forEach(function(x){ ks[x]=1; }); Object.keys(r).forEach(function(x){ ks[x]=1; });
+    for(k in ks){
+      var inl=(k in l), inr=(k in r), inb=(k in bo);
+      if(inl&&inr) res[k]=m3(bo[k],l[k],r[k],rn,mx);
+      else if(inl){ if(!(inb&&deq(bo[k],l[k]))) res[k]=l[k]; }
+      else{ if(!(inb&&deq(bo[k],r[k]))) res[k]=r[k]; }
+    }
+    return res;
+  }
+  if(mx&&typeof l==="number"&&typeof r==="number") return Math.max(l,r);
+  return rn?r:l;
+}
+function fixG(m,l,r){
+  try{
+    var a=(l&&l.ap)||{}, b=(r&&r.ap)||{}, o=Object.assign({},m.ap||{});
+    Object.keys(Object.assign({},a,b)).forEach(function(k){ o[k]=Math.max(+a[k]||0,+b[k]||0); });
+    if(Object.keys(o).length) m.ap=o;
+    var a2=(l&&l.art)||{}, b2=(r&&r.art)||{}, o2=Object.assign({},m.art||{});
+    Object.keys(Object.assign({},a2,b2)).forEach(function(k){ var x=a2[k], y=b2[k]; o2[k]=!x?y:!y?x:((y[1]||0)>(x[1]||0)?y:x); });
+    if(Object.keys(o2).length) m.art=o2;
+  }catch(e){}
+  return m;
 }
 
-/* Telegram CloudStorage: лимит значения — 4096 символов, поэтому дни и заметки пакуются в куски до ~3800. */
+/* Telegram CloudStorage: лимит значения — 4096 символов, поэтому дни и заметки пакуются в куски до ~3800.
+   Раскладка ключей прежняя (t_/n_/e_/c_/r_/p/s/a/g/xl/meta), добавлены q_<месяц> и qg — метки времени записей. */
 function pack(prefix,map){
   var out={}, ks=Object.keys(map).sort(), curM="", n=0, cur={}, len=2;
   function flush(){ if(curM&&Object.keys(cur).length) out[prefix+"_"+curM+"_"+n]=JSON.stringify(cur); }
@@ -2426,8 +2559,9 @@ function pack(prefix,map){
   flush();
   return out;
 }
+function ne(map){ var o={}; Object.keys(map).forEach(function(k){ var v=map[k]; if(Array.isArray(v)?v.length:(v!=null&&v!=="")) o[k]=v; }); return o; }
 function tgChunks(){
-  var out=Object.assign({},pack("t",store),pack("n",S.notes),pack("e",S.sched)); out.p=JSON.stringify(S.tpl);
+  var out=Object.assign({},pack("t",ne(store)),pack("n",ne(S.notes)),pack("e",ne(S.sched))); out.p=JSON.stringify(S.tpl);
   S.rec.forEach(function(r){ out["r_"+r.id]=JSON.stringify(r); });
   out.s=JSON.stringify({set:S.set,cats:S.cats});
   if(S.ach) out.a=JSON.stringify(S.ach);
@@ -2438,54 +2572,215 @@ function tgChunks(){
   });
   return out;
 }
-function tgPush(){
-  var cs=TG.CloudStorage, ch=tgChunks(), k;
-  for(k in ch){
-    if(lastPushed[k]!==ch[k]&&ch[k].length<=4096){
-      (function(k,v){ cs.setItem(k,v,function(err){ if(!err) lastPushed[k]=v; }); })(k,ch[k]);
-    }
+function manifestsOut(){
+  var by={}, out={}, k, v, c, date, mo, p, now=Date.now();
+  for(k in MT.m){
+    if(MT.d[k]&&now-MT.m[k]>60*864e5) continue;
+    v=MT.d[k]?-MT.m[k]:MT.m[k]; c=k.charAt(0);
+    if((c==="t"||c==="n"||c==="e")&&k.charAt(1)===":"){ date=k.slice(2); mo=date.slice(0,7); (by["q_"+mo]=by["q_"+mo]||{})[c+date.slice(7)]=v; }
+    else if(c==="c"&&k.charAt(1)===":"){ p=k.indexOf(":",2); mo=k.slice(2,p); (by["q_"+mo]=by["q_"+mo]||{})["c"+k.slice(p+1)]=v; }
+    else if(c==="r"&&k.charAt(1)===":"){ (by.qg=by.qg||{})["r"+k.slice(2)]=v; }
+    else (by.qg=by.qg||{})[k]=v;
   }
-  var gone=Object.keys(lastPushed).filter(function(x){ return x!=="meta"&&!(x in ch); });
-  if(gone.length) cs.removeItems(gone,function(err){ if(!err) gone.forEach(function(x){ delete lastPushed[x]; }); });
-  var m=String(getUpdated());
-  if(lastPushed.meta!==m) cs.setItem("meta",m,function(err){ if(!err) lastPushed.meta=m; });
+  Object.keys(by).forEach(function(q){
+    var o=by[q], s=JSON.stringify(o);
+    if(s.length>3900){
+      Object.keys(o).filter(function(x){ return o[x]<0; }).sort(function(a,b){ return o[b]-o[a]; }).some(function(x){ delete o[x]; s=JSON.stringify(o); return s.length<=3900; });
+    }
+    out[q]=s;
+  });
+  return out;
 }
-function tgPull(done){
-  var cs=TG.CloudStorage;
-  cs.getKeys(function(err,keys){
-    if(err||!keys||!keys.length){ done(null); return; }
-    cs.getItems(keys,function(err2,vals){
-      if(err2||!vals){ done(null); return; }
-      var t={}, c={}, n={}, sch={}, tpl=null, gg=null, xl=null, rec=[], sx=null, ach=null, upd=0;
-      keys.forEach(function(k){
-        var v=vals[k]; if(!v) return; lastPushed[k]=v;
-        try{
-          if(k==="meta") upd=+v||0;
-          else if(k==="s") sx=JSON.parse(v);
-          else if(k==="a") ach=JSON.parse(v);
-          else if(k==="g") gg=JSON.parse(v);
-          else if(k==="xl") xl=JSON.parse(v);
-          else if(k.indexOf("t_")===0) Object.assign(t,JSON.parse(v));
-          else if(k.indexOf("n_")===0) Object.assign(n,JSON.parse(v));
-          else if(k.indexOf("e_")===0) Object.assign(sch,JSON.parse(v));
-          else if(k==="p") tpl=JSON.parse(v);
-          else if(k.indexOf("r_")===0) rec.push(JSON.parse(v));
-          else if(k.indexOf("c_")===0){
-            var parts=k.slice(2).split("_");
-            if(parts.length===1) c[parts[0]]=JSON.parse(v);
-            else{ var m=parts[0]; if(!c[m]||!Array.isArray(c[m].items)) c[m]={items:[]}; c[m].items.push(JSON.parse(v)); }
-          }
-        }catch(e){}
-      });
-      Object.keys(c).forEach(function(m){ if(Array.isArray(c[m].items)) c[m].items.sort(function(a,b){ return a.id<b.id?-1:1; }); });
-      done({tasks:t,ch:c,notes:n,sched:sch,tpl:tpl,g:gg,xl:xl,rec:rec,sx:sx,ach:ach,v6:!!sx,updated:upd});
+var KNOWNKEY=/^(?:[tne]_\d{4}-\d{2}_\d+|c_.+|r_.+|q_.+|qg|p|s|a|g|xl)$/;
+
+/* Разбор того, что лежит в облаке, в «записи» с метками времени. */
+function parseRemote(vals){
+  var R={}, Q={}, meta=0, k, v, m, fb;
+  for(k in vals){ if(k==="meta") meta=+vals[k]||0; else if(k==="qg"||k.indexOf("q_")===0){ var q0=safeParse(vals[k]); if(q0&&typeof q0==="object") Q[k]=q0; } }
+  fb=meta||1;
+  function q(qk,key){ var o=Q[qk], x=o&&o[key]; return typeof x==="number"?Math.abs(x):fb; }
+  for(k in vals){
+    v=vals[k]; if(!v) continue;
+    try{
+      if((m=k.match(/^([tne])_(\d{4}-\d{2})_(\d+)$/))){
+        var mp=JSON.parse(v), d;
+        for(d in mp) R[m[1]+":"+d]={j:JSON.stringify(mp[d]),t:q("q_"+m[2],m[1]+d.slice(7))};
+      }else if(k.indexOf("c_")===0){
+        var rest=k.slice(2), i=rest.indexOf("_");
+        if(i<0){ (JSON.parse(v).items||[]).forEach(function(it){ R["c:"+rest+":"+it.id]={j:JSON.stringify(it),t:q("q_"+rest,"c"+it.id)}; }); }
+        else R["c:"+rest.slice(0,i)+":"+rest.slice(i+1)]={j:v,t:q("q_"+rest.slice(0,i),"c"+rest.slice(i+1))};
+      }else if(k.indexOf("r_")===0) R["r:"+k.slice(2)]={j:v,t:q("qg","r"+k.slice(2))};
+      else if(k==="p"||k==="s"||k==="a"||k==="g"||k==="xl") R[k]={j:v,t:q("qg",k)};
+    }catch(e){}
+  }
+  Object.keys(Q).forEach(function(qk){
+    var o=Q[qk], mo=qk.slice(2);
+    Object.keys(o).forEach(function(e){
+      if(!(o[e]<0)) return;
+      var rk, c=e.charAt(0);
+      if(qk==="qg") rk=(c==="r")?"r:"+e.slice(1):e;
+      else rk=(c==="c")?"c:"+mo+":"+e.slice(1):c+":"+mo+e.slice(1);
+      if(!R[rk]) R[rk]={del:1,t:-o[e]};
     });
+  });
+  return R;
+}
+function setRec(k,j){
+  var v=(j==null)?null:safeParse(j), t=k.charAt(0), i, id, o, mp;
+  if(k.charAt(1)===":"&&(t==="t"||t==="n"||t==="e")){ mp=t==="t"?store:t==="n"?S.notes:S.sched; if(v==null) delete mp[k.slice(2)]; else mp[k.slice(2)]=v; return; }
+  if(k.charAt(1)===":"&&t==="c"){
+    var p=k.indexOf(":",2), mo=k.slice(2,p); id=k.slice(p+1);
+    o=chStore[mo]||(chStore[mo]={items:[]}); if(!Array.isArray(o.items)) o.items=[];
+    i=o.items.findIndex(function(x){ return String(x.id)===id; });
+    if(v==null){ if(i>=0) o.items.splice(i,1); } else if(i>=0) o.items[i]=v; else o.items.push(v);
+    return;
+  }
+  if(k.charAt(1)===":"&&t==="r"){
+    id=k.slice(2); i=S.rec.findIndex(function(x){ return String(x.id)===id; });
+    if(v==null){ if(i>=0) S.rec.splice(i,1); } else if(i>=0) S.rec[i]=v; else S.rec.push(v);
+    return;
+  }
+  if(v==null) return;
+  if(k==="p") S.tpl=Array.isArray(v)?v:[];
+  else if(k==="s"){ if(Array.isArray(v.cats)) S.cats=v.cats; if(v.set) S.set=Object.assign(S.set,v.set); }
+  else if(k==="g") S.g=v;
+  else if(k==="a") S.ach=v;
+  else if(k==="xl") S.xl=v;
+}
+function pick(k,lj,lt,r){
+  if(k==="xl"){ var lx=safeParse(lj), rx=safeParse(r.j); return ((rx&&rx.pk||0)>=(lx&&lx.pk||0))?{t:"set",j:r.j}:null; }
+  var bj=BASE[k], hasB=(bj!==undefined);
+  var b=hasB?safeParse(bj):undefined, l=safeParse(lj), rr=safeParse(r.j);
+  if(hasB&&deq(b,l)) return {t:"set",j:r.j};     // у нас не менялось — берём облако
+  if(hasB&&deq(b,rr)) return null;               // в облаке не менялось — остаётся наше
+  var m=m3(b,l,rr,r.t>=lt,k==="g");              // менялось и там и тут (или базы ещё нет) — объединяем, ничего не выбрасывая
+  if(k==="g") m=fixG(m,l,rr);
+  if(deq(m,l)) return null;
+  if(deq(m,rr)) return {t:"set",j:r.j};
+  return {t:"merged",j:JSON.stringify(m)};
+}
+/* Сливает облако с локальными данными. Ничего не теряется: записи, которые есть только на одной стороне, сохраняются. */
+function mergeRemote(R){
+  stamp();
+  var L=records(), keys={}, k, acts=[], over=0, i, a, r;
+  Object.keys(L).forEach(function(x){ keys[x]=1; }); Object.keys(R).forEach(function(x){ keys[x]=1; });
+  for(k in keys){
+    r=R[k]; if(!r) continue;
+    var lv=(k in L), lt=MT.m[k]||0, ld=!lv&&!!MT.d[k]; a=null;
+    if(!lv&&!ld) a=r.del?{t:"tomb"}:{t:"set",j:r.j};
+    else if(lv&&r.del) a=(r.t>lt)?{t:"del"}:null;
+    else if(lv) a=(r.j===L[k]||deq(safeParse(r.j),safeParse(L[k])))?{t:"same"}:pick(k,L[k],lt,r);
+    else if(r.del) a={t:"tomb"};
+    else a=(r.t>lt)?{t:"set",j:r.j}:null;
+    if(!a) continue;
+    a.k=k; a.r=r; a.lv=lv; acts.push(a);
+    if(lv&&(a.t==="set"||a.t==="del"||a.t==="merged")) over++;
+  }
+  if(over) makeBackup("до синхронизации",30*60*1000);
+  var changed=false;
+  for(i=0;i<acts.length;i++){
+    a=acts[i]; k=a.k; r=a.r;
+    if(a.t==="same"){ MT.m[k]=Math.max(MT.m[k]||0,r.t); continue; }
+    if(a.t==="set"){ setRec(k,a.j); MT.m[k]=r.t; delete MT.d[k]; MT.c=Math.max(MT.c||0,r.t); changed=true; }
+    else if(a.t==="merged"){ setRec(k,a.j); MT.m[k]=nowTs(); delete MT.d[k]; changed=true; }
+    else{ setRec(k,null); MT.m[k]=r.t; MT.d[k]=1; MT.c=Math.max(MT.c||0,r.t); if(a.lv) changed=true; }
+  }
+  if(changed){ normS(); migrate(); persist(); }
+  rehash();
+  return changed;
+}
+
+function cg(fn,cb){
+  var fin=false, t=setTimeout(function(){ if(!fin){ fin=true; cb("timeout"); } },20000);
+  fn(function(e,r){ if(fin) return; fin=true; clearTimeout(t); cb(e,r); });
+}
+function pool(tasks,limit,cb){
+  var i=0, act=0, bad=false, fin=false;
+  function pump(){
+    if(fin) return;
+    while(!bad&&act<limit&&i<tasks.length){ act++; (function(f){ f(function(err){ act--; if(err) bad=true; pump(); }); })(tasks[i++]); }
+    if(act===0&&(bad||i>=tasks.length)){ fin=true; cb(bad); }
+  }
+  pump();
+}
+function cloudGet(cb){
+  var cs=TG.CloudStorage;
+  cg(function(f){ cs.getKeys(f); },function(e,keys){
+    if(e||!Array.isArray(keys)){ cb(e||"keys"); return; }
+    var vals={}, i=0;
+    (function next(){
+      if(i>=keys.length){ cb(null,vals); return; }
+      var part=keys.slice(i,i+60); i+=60;
+      cg(function(f){ cs.getItems(part,f); },function(e2,r){ if(e2||!r){ cb(e2||"items"); return; } Object.keys(r).forEach(function(k){ vals[k]=r[k]; }); next(); });
+    })();
+  });
+}
+function pushDiff(done){
+  var snap=records(), cs=TG.CloudStorage, ch=tgChunks(), mf=manifestsOut(), k, todo=[], big=false;
+  for(k in mf) ch[k]=mf[k];
+  for(k in ch){ if(ch[k].length>4096){ big=true; delete ch[k]; } }
+  oversize=big;
+  for(k in ch) if(lastPushed[k]!==ch[k]) todo.push(k);
+  var gone=Object.keys(lastPushed).filter(function(x){ return !(x in ch)&&KNOWNKEY.test(x); });
+  if(!todo.length&&!gone.length){ done(true,snap); return; }
+  var wr=todo.map(function(kk){ return function(cb){ cg(function(f){ cs.setItem(kk,ch[kk],f); },function(e){ if(!e) lastPushed[kk]=ch[kk]; cb(e); }); }; });
+  pool(wr,6,function(bad){
+    if(bad){ done(false); return; }
+    var rm=[], i; for(i=0;i<gone.length;i+=40) rm.push(gone.slice(i,i+40));
+    pool(rm.map(function(g){ return function(cb){ cg(function(f){ cs.removeItems(g,f); },function(e){ if(!e) g.forEach(function(x){ delete lastPushed[x]; }); cb(e); }); }; }),2,function(bad2){
+      if(bad2){ done(false); return; }
+      var m=String(Date.now());
+      cg(function(f){ cs.setItem("meta",m,f); },function(e){
+        if(e){ done(false); return; }
+        lastPushed.meta=m; lastMeta=m; try{ localStorage.setItem("planner:updated",m); }catch(_){}
+        done(true,snap);
+      });
+    });
+  });
+}
+function setSync(st){
+  var b=$("syncBtn"), n=$("cloudNote"); if(!tgCloud||!b||!n) return;
+  b.textContent={busy:"☁ Синхронизация…",ok:"☁ Синхронизировано",err:"☁ Нет связи"}[st]||"☁ Облако Telegram";
+  var t="Данные хранятся в облаке Telegram и общие для всех устройств этого аккаунта.";
+  if(st==="ok"&&lastSyncAt) t+=" Последняя синхронизация: "+new Date(lastSyncAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})+".";
+  if(st==="err") t="Нет связи с облаком Telegram. Данные сохранены на устройстве и отправятся, как только связь появится.";
+  if(oversize) t+=" ⚠ Часть записей слишком велика для облака — сократите длинные заметки.";
+  n.textContent=t;
+}
+function scheduleRetry(){ retryN++; clearTimeout(retryT); retryT=setTimeout(function(){ syncNow("retry",true); },Math.min(60000,4000*Math.pow(2,retryN-1))); }
+/* Один цикл: (при необходимости) прочитать облако → слить → отправить изменения. Пока облако не прочитано, ничего не отправляется. */
+function syncNow(why,full){
+  if(!tgCloud) return;
+  if(syncing){ syncAgain=true; return; }
+  syncing=true; syncAgain=false; clearTimeout(pushTimer); pushTimer=null; clearTimeout(retryT);
+  setSync("busy");
+  function fin(ok,snap){
+    syncing=false;
+    if(ok){ retryN=0; lastSyncAt=Date.now(); if(snap){ BASE=snap; saveBase(); } setSync("ok"); try{ renderSafety(); }catch(e){} makeBackup("авто"); }
+    else{ setSync("err"); scheduleRetry(); }
+    if(syncAgain){ syncAgain=false; setTimeout(function(){ syncNow("again"); },300); }
+  }
+  function pull(){
+    cloudGet(function(e,vals){
+      if(e){ fin(false); return; }
+      lastPushed=vals; lastMeta=String(vals.meta||""); lastFull=Date.now();
+      var ch=mergeRemote(parseRemote(vals));
+      cloudReady=true;
+      if(ch){ try{ applyAccent(); renderAll(); }catch(_){} }
+      pushDiff(fin);
+    });
+  }
+  stamp();
+  if(full||!cloudReady||Date.now()-lastFull>300000){ pull(); return; }
+  cg(function(f){ TG.CloudStorage.getItem("meta",f); },function(e,mv){
+    if(e){ fin(false); return; }
+    if(String(mv||"")!==lastMeta) pull(); else pushDiff(fin);
   });
 }
 function initTelegram(){
   loadScript("https://telegram.org/js/telegram-web-app.js",function(){
     var w=window.Telegram&&Telegram.WebApp;
-    if(w&&w.initData){
+    if(w&&w.initData&&!tgCloud){
       TG=w;
       try{ w.ready(); w.expand(); }catch(e){}
       if(w.requestFullscreen) $("fsBtn").hidden=false;
@@ -2494,18 +2789,25 @@ function initTelegram(){
       if(w.isVersionAtLeast&&w.isVersionAtLeast("6.9")&&w.CloudStorage){
         tgCloud=true;
         var b=$("syncBtn"); b.hidden=false; b.disabled=true; b.textContent="☁ Облако Telegram";
-        $("backup").hidden=true; $("cloudNote").hidden=false;
-        tgPull(applyRemote);
+        $("backup").hidden=true; $("cloudNote").hidden=false; $("syncNowBtn").hidden=false;
+        syncNow("start",true);
       }
     }
   });
 }
 
-/* Браузер: перенос данных между устройствами через файл. */
+/* Браузер: перенос данных между устройствами через файл (с контрольной суммой и проверкой). */
+function validBackup(o){
+  if(!o||typeof o!=="object"||o.app!=="planner") return "Это не файл планера.";
+  if(!o.tasks||!o.ch||typeof o.tasks!=="object"||typeof o.ch!=="object"||Array.isArray(o.tasks)||Array.isArray(o.ch)) return "Файл повреждён или неполный.";
+  if(o.sum){ var c=Object.assign({},o); delete c.sum; if(h53(JSON.stringify(c))!==o.sum) return "Файл повреждён: контрольная сумма не совпала."; }
+  return "";
+}
 $("exportBtn").addEventListener("click",function(){
-  var data=JSON.stringify({app:"planner",version:6,tasks:store,ch:chStore,v6:{cats:S.cats,rec:S.rec,notes:S.notes,set:S.set,ach:S.ach,sched:S.sched,tpl:S.tpl,g:S.g},exported:Date.now()});
+  var core={app:"planner",version:7,tasks:store,ch:chStore,v6:{cats:S.cats,rec:S.rec,notes:S.notes,set:S.set,ach:S.ach,sched:S.sched,tpl:S.tpl,g:S.g,xl:S.xl},exported:Date.now()};
+  core.sum=h53(JSON.stringify(core));
   var a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(core)],{type:"application/json"}));
   a.download="planner-backup-"+todayKey+".json";
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
@@ -2513,14 +2815,16 @@ $("exportBtn").addEventListener("click",function(){
 $("importBtn").addEventListener("click",function(){ $("importFile").click(); });
 $("importFile").addEventListener("change",function(){
   var inp=this, f=inp.files&&inp.files[0]; if(!f) return;
+  if(f.size>8*1024*1024){ alert("Файл слишком большой для резервной копии планера."); inp.value=""; return; }
   var r=new FileReader();
   r.onload=function(){
     try{
-      var o=JSON.parse(r.result);
-      if(!o||!o.tasks||!o.ch||typeof o.tasks!=="object"||typeof o.ch!=="object") throw 0;
-      if(confirm("Заменить данные на этом устройстве данными из файла?")){
+      var o=JSON.parse(r.result), bad=validBackup(o);
+      if(bad){ alert(bad); inp.value=""; return; }
+      if(confirm("Заменить данные на этом устройстве данными из файла ("+Object.keys(o.tasks).length+" дн. с задачами)? Перед этим будет создана автокопия текущих данных.")){
+        makeBackup("до импорта",0);
         store=o.tasks; chStore=o.ch;
-        if(o.v6){ S.cats=o.v6.cats; S.rec=o.v6.rec; S.notes=o.v6.notes; S.sched=o.v6.sched||{}; S.tpl=o.v6.tpl||[]; if(o.v6.g) S.g=o.v6.g; S.set=o.v6.set; if(o.v6.ach) S.ach=o.v6.ach; }
+        if(o.v6){ S.cats=o.v6.cats; S.rec=o.v6.rec; S.notes=o.v6.notes; S.sched=o.v6.sched||{}; S.tpl=o.v6.tpl||[]; if(o.v6.g) S.g=o.v6.g; S.set=o.v6.set; if(o.v6.ach) S.ach=o.v6.ach; if(o.v6.xl) S.xl=o.v6.xl; }
         normS(); migrate(); persist(); touch(); applyAccent(); renderAll();
       }
     }catch(e){ alert("Не удалось прочитать файл. Выберите файл, сохранённый этим планером."); }
@@ -2528,6 +2832,31 @@ $("importFile").addEventListener("change",function(){
   };
   r.readAsText(f);
 });
+
+/* ---------- Автокопии: восстановление и ручная синхронизация ---------- */
+function fmtT(t){ try{ return new Date(t).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}); }catch(e){ return String(t); } }
+function renderSafety(){
+  var l=bakList(), n=$("bakNote"); if(!n) return;
+  n.textContent=l.length?("Автокопии на этом устройстве: "+l.length+" · последняя "+fmtT(l[l.length-1].t)+"."):"Автокопий на этом устройстве пока нет.";
+  $("restoreBtn").hidden=!l.length;
+  if(!l.length) $("restoreBox").hidden=true;
+}
+$("syncNowBtn").addEventListener("click",function(){ syncNow("manual",true); });
+$("restoreBtn").addEventListener("click",function(){
+  var l=bakList().slice().reverse(), sel=$("bakSel");
+  sel.innerHTML=l.map(function(x){ return '<option value="'+x.t+'">'+esc(fmtT(x.t)+" · "+(x.n||0)+" задач · "+(x.why||"авто"))+'</option>'; }).join("");
+  $("restoreBox").hidden=!$("restoreBox").hidden;
+});
+$("doRestoreBtn").addEventListener("click",function(){
+  var t=$("bakSel").value, o=readBackup(t);
+  if(!o){ alert("Эту копию прочитать не удалось."); return; }
+  if(!confirm("Вернуть данные на состояние "+fmtT(+t)+"? "+(tgCloud?"Это изменит данные на всех ваших устройствах. ":"")+"Текущие данные перед этим сохранятся в автокопию.")) return;
+  makeBackup("до восстановления",0);
+  replaceState(o.store,o.ch,o.S); normS(); migrate(); persist(); touch(); applyAccent(); renderAll();
+  $("restoreBox").hidden=true; renderSafety();
+});
+renderSafety();
+if(autoRestored) setTimeout(function(){ try{ toast10("♻ Данные восстановлены из автокопии"); }catch(e){} },2500);
 
 renderAll();
 initTelegram();
