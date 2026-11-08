@@ -51,7 +51,7 @@ function flow(j){
   var s=(j.steps||[]).map(function(t,i){ return '<span class="fs">'+(i+1)+'. '+esc(t)+'</span>'; }).join('<b class="fa">→</b>');
   return '<figure class="art-fig">'+(j.title?'<figcaption><b>'+esc(j.title)+'</b></figcaption>':'')+'<div class="fl">'+s+(j.loop?'<b class="fa">↻</b>':'')+'</div>'+(j.src?'<small>'+esc(j.src)+'</small>':'')+'</figure>';
 }
-function widget(kind,txt){ try{ var j=JSON.parse(txt); return kind==="chart"?chart(j):flow(j); }catch(e){ return ""; } }
+function widget(kind,txt){ try{ var j=JSON.parse(txt); return kind==="chart"?chart(j):flow(j); }catch(e){ return '<figure class="art-fig">⚠ Не удалось разобрать график</figure>'; } }
 function md(src,base){
   var out=[],list=null,para=[];
   function inl(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*)\*/g,"$1<i>$2</i>"); }
@@ -97,7 +97,7 @@ function render(){
         +'<div class="gmuted" style="margin-bottom:8px">'+(done?"Получено "+done[1]+" XP":"+"+a.xp+" XP")+'</div>'
         +(lock?"":'<button class="btn" data-id="'+esc(a.id)+'">'+(done?"Перечитать":"Читать")+'</button>')+'</section>';
     });
-    page.innerHTML=h;
+    page.innerHTML=h+'<p class="gmuted" style="text-align:center;margin-top:14px">Читалка v6 · графики и схемы включены</p>';
   });
 }
 page.addEventListener("click",function(e){
