@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- Планер задач · сборка 13 -->
+<!-- Планер задач · сборка 14 -->
 <html lang="ru">
 <head>
 <script>
 /* Самообновление. Номер сборки ОДИН и тот же здесь и в version.json — при каждом релизе поднимай оба.
    Если на сайте сборка новее, страница перезагружается с ?v=N и обходит кэш Telegram.
    Проверка идёт при запуске и каждый раз, когда мини-апп снова открывают из свёрнутого состояния. */
-window.APP_BUILD=13;
+window.APP_BUILD=14;
 (function(){
   function check(){ try{
     fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
@@ -2533,7 +2533,7 @@ renderAll();
 initTelegram();
 setTimeout(function(){ checkAch(false); },2300);
 
-/* ---------- Статьи и тесты (читалка v8: графики и схемы, плашка не закреплена) ---------- */
+/* ---------- Статьи и тесты ---------- */
 (function(){
 var WORKER_URL="https://planer.p41286529.workers.dev";      // адрес Worker, например https://planer.xxx.workers.dev (пусто = без синхронизации «прочитано»)
 var MIN_READ=0.3;       // доля времени чтения, до которой тест закрыт
@@ -2554,38 +2554,76 @@ st.textContent=".art-r{max-width:680px;margin:0 auto}.art-r h1{font-size:1.4rem;
 +".art-r h3{font-size:1.02rem}.art-r p,.art-r li{line-height:1.7}.art-r blockquote{margin:12px 0;padding:10px 14px;border-left:4px solid var(--accent);background:var(--soft);border-radius:8px}"
 +".art-q{margin:14px 0}.art-q .chk{display:block;margin:6px 0}.art-e{color:var(--muted);font-size:.9rem;margin-top:4px}.art-c{margin-bottom:12px}"
 +"#tabArt.hasnew::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:4px;vertical-align:super}";
-st.textContent+=".art-ph{min-height:56px;margin:10px 0 8px}.art-top{display:flex;align-items:center;gap:10px;padding:8px 0}"
+st.textContent+=".art-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:10px;margin:0 -16px 10px;padding:8px 16px;background:color-mix(in srgb,var(--surface) 88%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}"
 +".art-b{width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--surface);font-size:1.5rem;line-height:1;flex:none}"
 +".art-t{flex:1;min-width:0;text-align:center}.art-t small{display:block;color:var(--accent);font-weight:800;letter-spacing:.05em;font-size:.7rem}"
 +".art-t b{display:block;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
 +".art-p{position:relative;width:40px;height:40px;flex:none}.art-p svg{width:100%;height:100%}.art-p circle{fill:none;stroke-width:3.2}.art-p .bg{stroke:var(--soft)}"
 +".art-p .fg{stroke:var(--accent);stroke-linecap:round;stroke-dasharray:0 100;transition:stroke-dasharray .15s}"
 +".art-p span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800}";
-st.textContent+=".art-fig{margin:16px 0;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--soft)}.art-fig img{max-width:100%;border-radius:8px;display:block;margin:0 auto}"
-+".art-fig figcaption{margin-bottom:8px}.art-fig small{display:block;color:var(--muted);margin-top:8px;font-size:.78rem}"
-+".bc{display:grid;grid-template-columns:minmax(90px,36%) 1fr auto;gap:8px;align-items:center;margin:6px 0;font-size:.88rem}"
-+".bt{height:12px;background:var(--border);border-radius:6px;overflow:hidden}.bt i{display:block;height:100%;background:var(--accent);border-radius:6px}"
-+".fl{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.fs{padding:6px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-size:.88rem}.fa{color:var(--accent)}";
+st.textContent+=".al-hero{padding:22px 20px 64px;border-radius:26px;color:#fff;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 45%,#19c3e6))}"
++".al-hero.s{padding-bottom:26px;margin-bottom:16px}"
++".al-pill{display:inline-block;padding:5px 11px;border-radius:99px;background:rgba(255,255,255,.22);font-size:.7rem;font-weight:800;letter-spacing:.06em}"
++".al-hero h2{margin:12px 0 0;font-size:2rem;font-weight:800;color:#fff}"
++".al-btn{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}"
++".al-cont{display:flex;gap:14px;align-items:center;margin:-46px 6px 20px;position:relative;padding:14px 16px;border-radius:24px;background:var(--surface);border:2px solid var(--accent);box-shadow:0 14px 34px rgba(20,30,60,.12)}"
++".al-cm{flex:1;min-width:0}.al-top{display:flex;align-items:center;justify-content:space-between;gap:8px}"
++".al-tag{padding:4px 10px;border-radius:99px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font-size:.66rem;font-weight:800;letter-spacing:.06em}"
++".al-pc{color:var(--muted);font-weight:800;font-size:.85rem}.al-cm b{display:block;margin:8px 0;font-size:1.05rem;line-height:1.25}"
++".al-bar{display:block;height:8px;border-radius:99px;background:var(--soft);overflow:hidden}.al-bar i{display:block;height:100%;border-radius:99px;background:var(--accent)}"
++".al-h{margin:6px 4px 12px;font-size:1.05rem;font-weight:800}"
++".al-i{position:relative;display:flex;gap:14px;align-items:center;margin:0 0 14px;padding:14px;border:0;border-radius:24px;background:var(--surface);box-shadow:0 1px 2px rgba(20,30,60,.05),0 10px 26px rgba(20,30,60,.07)}"
++".al-i.lk{opacity:.6;cursor:default}.al-i.dn .al-tt{color:var(--muted)}"
++".al-ic{flex:none;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.6rem;box-shadow:inset 0 -4px 10px rgba(0,0,0,.12)}"
++".al-tx{flex:1;min-width:0}.al-tt{display:block;font-weight:800;font-size:1.02rem;line-height:1.25}"
++".al-m{display:block;margin-top:4px;color:var(--muted);font-size:.78rem;font-weight:700}"
++".al-r{flex:none;color:var(--muted);font-size:1.5rem;line-height:1}"
++".al-ok{flex:none;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok);font-weight:800}"
++".al-new{position:absolute;top:-9px;right:16px;padding:4px 12px;border-radius:99px;background:linear-gradient(90deg,#ffb020,#ff7a1a);color:#fff;font-size:.68rem;font-weight:800;letter-spacing:.05em;box-shadow:0 6px 14px rgba(255,122,26,.35)}"
++".art-ph{height:56px}"
++".art-top{position:relative;top:auto;margin:0;padding:8px 0;z-index:30;background:none;-webkit-backdrop-filter:none;backdrop-filter:none}"
++".art-top.stuck{position:fixed;top:calc(env(safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));left:0;right:0;padding:8px max(16px,calc((100% - 980px)/2 + 16px));background:color-mix(in srgb,var(--surface) 88%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 6px 18px rgba(20,30,60,.08)}"
++".art-t b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;line-height:1.25;font-size:.95rem}";
+st.textContent+=".ac-fig{margin:16px 0;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--soft)}.ac-fig figcaption{margin-bottom:8px}.ac-fig small{display:block;color:var(--muted);margin-top:8px;font-size:.78rem}"
++".ac-row{display:grid;grid-template-columns:minmax(90px,36%) 1fr auto;gap:8px;align-items:center;margin:6px 0;font-size:.88rem}"
++".ac-trk{height:12px;background:var(--border);border-radius:6px;overflow:hidden}.ac-trk i{display:block;height:100%;background:var(--accent);border-radius:6px}"
++".ac-flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.ac-step{padding:6px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-size:.88rem}.ac-arr{color:var(--accent)}";
 document.head.appendChild(st);
 
-var _show=showTab; showTab=function(n){ _show(n); if(n==="art") render(); };
+var _show=showTab; showTab=function(n){ if(n!=="art") flush(); _show(n); if(n==="art") render(); };
+var _cx=calcXP; calcXP=function(){ return _cx()+xp(); };
 
 function A(){ if(!S.g.art||typeof S.g.art!=="object") S.g.art={}; return S.g.art; }
 function xp(){ var s=0,a=(S.g&&S.g.art)||{}; Object.keys(a).forEach(function(k){ s+=+(a[k]&&a[k][1])||0; }); return s; }
 function fd(d){ var p=d.split("-"); return +p[2]+" "+MONTHS_GEN[p[1]-1]; }
+function fdn(d){ var p=d.split("-"); return p[2]+"."+p[1]+"."+p[0].slice(2); }
+function plur(n){ var a=n%10,b=n%100; return n+" "+((a===1&&b!==11)?"статья":(a>=2&&a<=4&&(b<10||b>=20))?"статьи":"статей"); }
+function P(){ if(!S.g.ap||typeof S.g.ap!=="object") S.g.ap={}; return S.g.ap; }
+var GR=[["#10b981","#047857"],["#3b82f6","#1d4ed8"],["#8b5cf6","#6d28d9"],["#f59e0b","#d97706"],["#ec4899","#be185d"],["#14b8a6","#0f766e"]];
+var EM=["🧬","💡","🧠","🔬","📘","🌿"];
+function ico(a,k){ k=k%GR.length; return '<span class="al-ic" style="background:linear-gradient(145deg,'+GR[k][0]+','+GR[k][1]+')">'+esc(a.icon||EM[k])+'</span>'; }
+var dirty=false, lastSaved=0;
+function flush(){ if(dirty){ dirty=false; save(); } }
+function remember(id,v){
+  var p=P(); if(v<=(p[id]||0)) return;
+  p[id]=v; S.g.apl=id;
+  if(v-lastSaved>=3||v>=100){ lastSaved=v; dirty=false; save(); } else dirty=true;
+}
+document.addEventListener("visibilitychange",function(){ if(document.hidden) flush(); });
+window.addEventListener("pagehide",flush);
 
-function chart(j){
+function artChart(j){
   var d=j.data||[], mx=j.max||Math.max.apply(null,d.map(function(r){ return +r[1]||0; }).concat([1])), u=j.unit||"";
-  return '<figure class="art-fig">'+(j.title?'<figcaption><b>'+esc(j.title)+'</b></figcaption>':'')+d.map(function(r){
-    return '<div class="bc"><span class="bl">'+esc(r[0])+'</span><span class="bt"><i style="width:'+Math.max(2,Math.min(100,100*r[1]/mx))+'%"></i></span><b class="bv">'+(+r[1])+esc(u)+'</b></div>';
+  return '<figure class="ac-fig">'+(j.title?'<figcaption><b>'+esc(j.title)+'</b></figcaption>':'')+d.map(function(r){
+    return '<div class="ac-row"><span class="ac-lab">'+esc(r[0])+'</span><span class="ac-trk"><i style="width:'+Math.max(2,Math.min(100,100*(+r[1]||0)/mx))+'%"></i></span><b class="ac-val">'+(+r[1]||0)+esc(u)+'</b></div>';
   }).join("")+(j.src?'<small>'+esc(j.src)+'</small>':'')+'</figure>';
 }
-function flow(j){
-  var s=(j.steps||[]).map(function(t,i){ return '<span class="fs">'+(i+1)+'. '+esc(t)+'</span>'; }).join('<b class="fa">→</b>');
-  return '<figure class="art-fig">'+(j.title?'<figcaption><b>'+esc(j.title)+'</b></figcaption>':'')+'<div class="fl">'+s+(j.loop?'<b class="fa">↻</b>':'')+'</div>'+(j.src?'<small>'+esc(j.src)+'</small>':'')+'</figure>';
+function artFlow(j){
+  var s=(j.steps||[]).map(function(t,i){ return '<span class="ac-step">'+(i+1)+'. '+esc(t)+'</span>'; }).join('<b class="ac-arr">→</b>');
+  return '<figure class="ac-fig">'+(j.title?'<figcaption><b>'+esc(j.title)+'</b></figcaption>':'')+'<div class="ac-flow">'+s+(j.loop?'<b class="ac-arr">↻</b>':'')+'</div>'+(j.src?'<small>'+esc(j.src)+'</small>':'')+'</figure>';
 }
-function widget(kind,txt){ try{ var j=JSON.parse(txt); return kind==="chart"?chart(j):flow(j); }catch(e){ return '<figure class="art-fig">⚠ Не удалось разобрать график</figure>'; } }
-function md(src,base){
+function artWidget(kind,txt){ try{ var j=JSON.parse(txt); return kind==="chart"?artChart(j):artFlow(j); }catch(e){ return '<figure class="ac-fig">⚠ Не удалось разобрать график</figure>'; } }
+function md(src){
   var out=[],list=null,para=[];
   function inl(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*)\*/g,"$1<i>$2</i>"); }
   function fp(){ if(para.length){ out.push("<p>"+inl(para.join(" "))+"</p>"); para=[]; } }
@@ -2593,8 +2631,7 @@ function md(src,base){
   src.replace(/\r/g,"").split("\n").forEach(function(l){
     var m;
     if(!l.trim()){ fp(); fl(); return; }
-    if((m=l.match(/^@@(chart|flow)\s+(.*)$/))){ fp(); fl(); out.push(widget(m[1],m[2])); return; }
-    if((m=l.match(/^!\[([^\]]*)\]\(([\w.\/-]+)\)$/))&&m[2].indexOf("..")<0){ fp(); fl(); out.push('<figure class="art-fig"><img loading="lazy" src="'+(base||"")+m[2]+'" alt="'+esc(m[1])+'"><figcaption>'+esc(m[1])+'</figcaption></figure>'); return; }
+    if((m=l.match(/^@@(chart|flow)\s+(.*)$/))){ fp(); fl(); out.push(artWidget(m[1],m[2])); return; }
     if((m=l.match(/^(#{2,3})\s+(.*)/))){ fp(); fl(); out.push("<h"+m[1].length+">"+inl(m[2])+"</h"+m[1].length+">"); return; }
     if((m=l.match(/^>\s?(.*)/))){ fp(); fl(); out.push("<blockquote>"+inl(m[1])+"</blockquote>"); return; }
     if((m=l.match(/^(?:-|\d+\.)\s+(.*)/))){ fp(); var t=/^\d/.test(l)?"ol":"ul"; if(list!==t){ fl(); out.push("<"+t+">"); list=t; } out.push("<li>"+inl(m[1])+"</li>"); return; }
@@ -2621,57 +2658,77 @@ function render(){
   if(cur) return openArt(cur.id);
   fetchAll(function(){
     dot();
-    var h='<p class="sub">Статьи открываются по расписанию. После каждой короткий тест, за прочтение даётся XP.</p>';
-    if(!items.length) h+='<div class="empty">Статей пока нет.</div>';
-    items.forEach(function(a){
-      var done=A()[a.id], lock=a.date>todayKey;
-      h+='<section class="card art-c"><div class="head"><h2>'+esc(a.title)+'</h2><span class="gmuted">'
-        +(lock?"🔒 "+fd(a.date):done?"✓ "+done[0]+"/"+a.quiz.length:"≈ "+a.readMin+" мин")+'</span></div>'
-        +'<div class="gmuted" style="margin-bottom:8px">'+(done?"Получено "+done[1]+" XP":"+"+a.xp+" XP")+'</div>'
-        +(lock?"":'<button class="btn" data-id="'+esc(a.id)+'">'+(done?"Перечитать":"Читать")+'</button>')+'</section>';
-    });
-    page.innerHTML=h+'<p class="gmuted" style="text-align:center;margin-top:14px">Читалка v8 · сборка '+(window.APP_BUILD||"?")+' · графики и схемы включены</p>';
+    var pr=P(), n=items.length, cont=null;
+    if(S.g.apl){ items.forEach(function(a){ if(a.id===S.g.apl&&a.date<=todayKey&&!A()[a.id]&&pr[a.id]>0) cont=a; }); }
+    var h='<div class="al-hero'+(cont?'':' s')+'"><span class="al-pill">📖 '+plur(n).toUpperCase()+'</span><h2>Статьи</h2></div>';
+    if(cont){
+      var ci=items.indexOf(cont), cp=pr[cont.id];
+      h+='<button class="al-btn al-cont" data-id="'+esc(cont.id)+'">'+ico(cont,n-1-ci)
+        +'<span class="al-cm"><span class="al-top"><span class="al-tag">'+(cp>=100?"ПРОЙТИ ТЕСТ":"ПРОДОЛЖИТЬ")+'</span><span class="al-pc">'+cp+'%</span></span>'
+        +'<b>'+esc(cont.title)+'</b><span class="al-bar"><i style="width:'+cp+'%"></i></span></span></button>';
+    }
+    if(!n){ h+='<div class="empty">Статей пока нет.</div>'; }
+    else{
+      h+='<div class="al-h">Все статьи</div>';
+      items.forEach(function(a,i){
+        var done=A()[a.id], lock=a.date>todayKey, p=pr[a.id]||0, k=n-1-i;
+        var isNew=!lock&&!done&&!p&&(new Date(todayKey)-new Date(a.date))/864e5<=3;
+        var meta1=lock?"🔒 Откроется "+fd(a.date):"🕒 "+a.readMin+" мин · "+(done?"получено "+done[1]+" XP":"+"+a.xp+" XP")+(!done&&p>0?(p>=100?" · пройди тест":" · "+p+"%"):"");
+        var right=lock?"":done?'<span class="al-ok">✓</span>':'<span class="al-r">›</span>';
+        var inner=ico(a,k)+'<span class="al-tx"><span class="al-tt">'+esc(a.title)+'</span><span class="al-m">'+meta1+'</span>'
+          +(lock?'':'<span class="al-m" style="font-weight:600;opacity:.8">'+fdn(a.date)+'</span>')+'</span>'+right+(isNew?'<span class="al-new">НОВИНКА</span>':'');
+        h+=lock?'<div class="al-i lk">'+inner+'</div>'
+               :'<button class="al-btn al-i'+(done?' dn':'')+'" data-id="'+esc(a.id)+'">'+inner+'</button>';
+      });
+    }
+    page.innerHTML=h;
   });
 }
 page.addEventListener("click",function(e){
   var b=e.target.closest("button"); if(!b) return;
   if(b.dataset.id) openArt(b.dataset.id);
-  if(b.id==="artBack"){ cur=null; render(); }
+  if(b.id==="artBack"){ flush(); cur=null; render(); }
 });
 
 function openArt(id){
   fetchAll(function(){
     var a=items.filter(function(x){ return x.id===id; })[0];
     if(!a||a.date>todayKey){ cur=null; return render(); }
-    cur=a; bottom=false; t0=Date.now();
-    page.innerHTML='<div class="art-r"><div class="art-ph"><div class="art-top"><button class="art-b" id="artBack" aria-label="К списку">‹</button>'
-      +'<div class="art-t"><small>'+esc((a.cat||"Статья").toUpperCase())+'</small><b>'+esc(a.title)+'</b></div>'
-      +'<div class="art-p"><svg viewBox="0 0 36 36"><circle class="bg" cx="18" cy="18" r="15.9155"/><circle class="fg" id="artRing" cx="18" cy="18" r="15.9155" transform="rotate(-90 18 18)"/></svg><span id="artPct">0%</span></div></div></div>'
+    cur=a; bottom=false; t0=Date.now(); lastSaved=P()[a.id]||0; dirty=false;
+    page.innerHTML='<div class="art-r"><i id="artProbe" style="position:fixed;left:0;width:0;height:0;top:calc(env(safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px))"></i><div class="art-ph"><div class="art-top"><button class="art-b" id="artBack" aria-label="К списку">‹</button>'
+      +'<div class="art-t"><b>'+esc(a.title)+'</b></div>'
+      +'<div class="art-p"><svg viewBox="0 0 36 36"><circle class="bg" cx="18" cy="18" r="15.9155"/><circle class="fg" id="artRing" cx="18" cy="18" r="15.9155" transform="rotate(-90 18 18)" style="stroke-dasharray:'+(P()[a.id]||0)+' 100"/></svg><span id="artPct">'+(P()[a.id]||0)+'%</span></div></div></div>'
       +'<div class="gmuted">⏱ '+a.readMin+' мин чтения · +'+a.xp+' XP</div><h1>'+esc(a.title)+'</h1><div id="artBody">Загрузка…</div></div>';
     window.scrollTo(0,0);
     fetch("content/"+a._m+"/"+a.file,{cache:"no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(function(t){
       if(cur!==a) return;
-      $("artBody").innerHTML=md(t,"content/"+a._m+"/")+'<div id="artEnd"></div><div id="artQuiz"></div>'; watch(a); prog();
+      $("artBody").innerHTML=md(t)+'<div id="artEnd"></div><div id="artQuiz"></div>'; watch(a); prog();
     }).catch(function(){ $("artBody").textContent="Не удалось загрузить статью."; });
   });
 }
 
 function prog(){
   var b=$("artBody"); if(!b||!cur||!$("artPct")) return;
+  var ph=document.querySelector(".art-ph"), tp=document.querySelector(".art-top"), pr=$("artProbe");
+  if(ph&&tp&&pr) tp.classList.toggle("stuck",ph.getBoundingClientRect().top<pr.getBoundingClientRect().top);
   var r=b.getBoundingClientRect(), tot=r.height-window.innerHeight*0.6, v=Math.round(Math.max(0,Math.min(1,tot>0?-r.top/tot:1))*100);
-  $("artPct").textContent=v+"%"; $("artRing").setAttribute("stroke-dasharray",v+" 100");
+  if(!A()[cur.id]) remember(cur.id,v);
+  var mx=Math.max(v,P()[cur.id]||0);
+  $("artPct").textContent=mx+"%"; $("artRing").style.strokeDasharray=mx+" 100";
 }
 window.addEventListener("scroll",prog,{passive:true}); window.addEventListener("resize",prog);
 function watch(a){
-  var need=a.readMin*60*MIN_READ*1000;
-  if("IntersectionObserver" in window) new IntersectionObserver(function(es,o){ if(es[0].isIntersecting){ bottom=true; o.disconnect(); } }).observe($("artEnd"));
-  else bottom=true;
+  var tb=0, DELAY=10000;
+  if("IntersectionObserver" in window) new IntersectionObserver(function(es,o){
+    if(es[0].isIntersecting){ bottom=true; tb=Date.now(); o.disconnect(); if(!A()[a.id]) remember(a.id,100); prog(); }
+  }).observe($("artEnd"));
+  else{ bottom=true; tb=Date.now(); }
   (function tick(){
     if(cur!==a||!$("artQuiz")) return;
-    var left=need-(Date.now()-t0);
+    var left=bottom?DELAY-(Date.now()-tb):DELAY;
     if(bottom&&left<=0){ quiz(a); markRead(a); return; }
-    $("artQuiz").innerHTML='<p class="gmuted">'+(bottom?"Тест откроется через "+Math.ceil(left/1000)+" с. Пока можно перечитать ключевые места.":"Дочитай статью до конца, чтобы открыть тест.")+'</p>';
-    setTimeout(tick,1000);
+    $("artQuiz").innerHTML='<p class="gmuted">'+(bottom?"Тест откроется через "+Math.ceil(left/1000)+" с.":"Дочитай статью до конца, чтобы открыть тест.")+'</p>';
+    setTimeout(tick,500);
   })();
 }
 function markRead(a){
@@ -2698,8 +2755,8 @@ function grade(a){
   });
   var pass=ok>=Math.max(1,n-1), first=pass&&!A()[a.id];
   if(first){
-    var gain=a.xp+(ok===n?BONUS:0); A()[a.id]=[ok,gain]; save();
-    try{ toast10("📖 +"+gain+" XP"); checkLevel(levelInfo()); if(window.renderGame) renderGame(); }catch(e){}
+    var gain=a.xp+(ok===n?BONUS:0); A()[a.id]=[ok,gain]; P()[a.id]=100; if(S.g.apl===a.id) S.g.apl=""; save();
+    try{ toast10("📖 +"+gain+" XP"); checkLevel(levelInfo()); renderGame(); }catch(e){}
     dot();
   }
   $("artRes").innerHTML=pass?"Засчитано: "+ok+"/"+n+(first?"":" (XP за эту статью уже получен)"):"Пока не засчитано: "+ok+"/"+n+". Перечитай статью и попробуй ещё раз.";
