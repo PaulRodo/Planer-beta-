@@ -6,7 +6,7 @@
 /* Самообновление. Номер сборки ОДИН и тот же здесь и в version.json — при каждом релизе поднимай оба.
    Если на сайте сборка новее, страница перезагружается с ?v=N и обходит кэш Telegram.
    Проверка идёт при запуске и каждый раз, когда мини-апп снова открывают из свёрнутого состояния. */
-window.APP_BUILD=16;
+window.APP_BUILD=18;
 (function(){
   function check(){ try{
     fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
@@ -3058,7 +3058,18 @@ function wAge(j){
   var st=j.stages||[], a0=(j.start!=null?+j.start:+j.min);
   return fig(j,'<div class="ac-age" data-st="'+esc(JSON.stringify(st))+'"><div class="ac-ar">'+esc(j.q||"Возраст")+': <b class="ac-av">'+fnum(a0)+'</b> '+esc(j.unit||"лет")+'</div><input type="range" data-age min="'+(+j.min)+'" max="'+(+j.max)+'" step="'+(j.step||1)+'" value="'+a0+'" aria-label="Возраст"><div class="ac-at">'+ageText(st,a0)+'</div></div>');
 }
-var WID={chart:artChart,flow:artFlow,range:wRange,line:wLine,pairs:wPairs,duo:wDuo,time:wTime,myth:wMyth,doctor:wDoc,brief:wBrief,age:wAge};
+function wImage(j){
+  var src=String(j.src||"").trim();
+  var isLocal=/^\.\/content\/2026-11\/assets\/[A-Za-z0-9._-]+\.(?:png|webp|jpe?g)$/i.test(src);
+  var isCommons=/^https:\/\/commons\.wikimedia\.org\/wiki\/Special:FilePath\/[A-Za-z0-9_%_().-]+$/i.test(src);
+  if(!isLocal&&!isCommons){
+    return fig({title:j.title||"Иллюстрация",note:"Источник изображения не разрешён: используйте локальный assets-файл или Wikimedia Commons."},"");
+  }
+  var alt=esc(j.alt||j.title||"Иллюстрация");
+  return fig({title:j.title||"",note:j.credit||j.note||""},
+    '<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+esc(src)+'" alt="'+alt+'" style="display:block;width:100%;height:auto;max-height:440px;object-fit:contain;border-radius:10px;margin:0 auto">');
+}
+var WID={image:wImage,chart:artChart,flow:artFlow,range:wRange,line:wLine,pairs:wPairs,duo:wDuo,time:wTime,myth:wMyth,doctor:wDoc,brief:wBrief,age:wAge};
 function artWidgetJ(kind,j){ try{ if(!WID[kind]) throw 0; return WID[kind](j); }catch(e){ return '<figure class="ac-fig">⚠ Не удалось построить блок «'+esc(kind)+'»</figure>'; } }
 function artWidget(kind,txt){ var j; try{ j=JSON.parse(txt); }catch(e){ return '<figure class="ac-fig">⚠ Не удалось разобрать блок «'+esc(kind)+'»</figure>'; } return artWidgetJ(kind,j); }
 /* картинка в вопросе теста: строка «@@pairs {...}» или объект {"k":"pairs",...} */
