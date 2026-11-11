@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- Планер задач · сборка 16 -->
+<!-- Планер задач · сборка 19 -->
 <html lang="ru">
 <head>
 <script>
 /* Самообновление. Номер сборки ОДИН и тот же здесь и в version.json — при каждом релизе поднимай оба.
    Если на сайте сборка новее, страница перезагружается с ?v=N и обходит кэш Telegram.
    Проверка идёт при запуске и каждый раз, когда мини-апп снова открывают из свёрнутого состояния. */
-window.APP_BUILD=18;
+window.APP_BUILD=19;
 (function(){
   function check(){ try{
     fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
@@ -461,6 +461,121 @@ button.ci:hover{transform:scale(1.08)}
 .eb i{position:absolute;font-style:normal;animation:a11eb 1.4s ease-out forwards}
 @keyframes a11eb{0%{transform:translate(0,0) scale(.4);opacity:1}70%{opacity:1}100%{transform:translate(var(--dx),calc(var(--dy) + 120px)) rotate(var(--r)) scale(1);opacity:0}}
 .xrow{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.92rem}.xcur{font-weight:800;color:var(--accent)}
+
+/* ---------- Build 19: визуальная система и персонализация ---------- */
+:root{--ux-glass:rgba(255,255,255,.62)}
+body[data-density="compact"] .card{padding:13px;border-radius:18px}
+body[data-density="compact"] .task{padding-top:5px;padding-bottom:5px}
+body[data-density="compact"] .al-i{padding:10px;margin-bottom:9px}
+body[data-density="comfortable"] .card{padding:22px}
+body[data-density="comfortable"] .task{padding-top:11px;padding-bottom:11px}
+body[data-density="comfortable"] .al-i{padding:17px;margin-bottom:17px}
+body[data-ui-style="glass"] .card,
+body[data-ui-style="glass"] .al-i,
+body[data-ui-style="glass"] .wd,
+body[data-ui-style="glass"] .ev{
+  background:color-mix(in srgb,var(--surface) 74%,transparent);
+  -webkit-backdrop-filter:blur(15px);backdrop-filter:blur(15px);
+  border:1px solid color-mix(in srgb,var(--border) 68%,transparent);
+  box-shadow:0 12px 32px rgba(20,30,60,.10),inset 0 1px rgba(255,255,255,.24)
+}
+body[data-ui-style="glass"] .tabs{background:color-mix(in srgb,var(--surface) 70%,transparent);-webkit-backdrop-filter:blur(15px);backdrop-filter:blur(15px)}
+body[data-layout="bento"] #grid{grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+body[data-layout="bento"] #grid>section:first-child{grid-column:span 5}
+body[data-layout="bento"] #grid>section:last-child{grid-column:span 7}
+body[data-layout="bento"] #grid .stats{gap:7px}
+@media(max-width:760px){body[data-layout="bento"] #grid{grid-template-columns:minmax(0,1fr)}body[data-layout="bento"] #grid>section:first-child,body[data-layout="bento"] #grid>section:last-child{grid-column:1}}
+body[data-order="tasks"] #grid>section:first-child{order:2}
+body[data-order="tasks"] #grid>section:last-child{order:1}
+#pagePlan.ux-hide-search .searchbar{display:none!important}
+#pagePlan.ux-hide-note .note{display:none!important}
+#pagePlan.ux-hide-note .foot{margin-bottom:0}
+/* Цветовые характеры разделов */
+#pagePlan .card{--section-tone:#4d75dc}
+#pageSched .card{--section-tone:#17a887}
+#pageChal .chc{--section-tone:#d28b35}
+#pageStat .card{--section-tone:#8b70d8}
+#pageAch .card{--section-tone:#d58b37}
+#pageSet .card{--section-tone:#4b9bb4}
+#pagePlan .card,#pageSched .card,#pageStat .card,#pageAch .card,#pageSet .card{border-top:3px solid color-mix(in srgb,var(--section-tone,var(--accent)) 46%,transparent)}
+/* Общая анимационная система */
+@keyframes ux-page-in{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+@keyframes ux-check{0%{transform:scale(.75)}65%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes ux-glow{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 0%,transparent)}50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 14%,transparent)}}
+@keyframes ux-shimmer{to{background-position:200% 0}}
+@keyframes ux-cover-float{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(1deg)}}
+@keyframes ux-dot{0%,100%{transform:scale(.86);opacity:.65}50%{transform:scale(1.2);opacity:1}}
+.tab.on{box-shadow:0 5px 18px color-mix(in srgb,var(--accent) 24%,transparent)}
+.tab.on::after{content:"";display:inline-block;width:6px;height:6px;margin-left:6px;border-radius:50%;background:currentColor;vertical-align:middle;animation:ux-dot 1.7s ease-in-out infinite}
+.card{transition:transform .24s ease,box-shadow .24s ease,background-color .25s,border-color .25s}
+button,.ico,.del,.ci,.al-ic{transition:transform .18s ease,box-shadow .2s ease,filter .2s ease}
+button:active{transform:scale(.97)}
+.ico:hover,.theme:hover,.al-ic:hover,.ci:hover{filter:saturate(1.12);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 13%,transparent)}
+.task input[type=checkbox]{transition:transform .18s,filter .2s;accent-color:var(--ok)}
+.task input[type=checkbox]:checked{animation:ux-check .28s ease-out}
+.task .tt{transition:color .22s,opacity .22s,text-decoration-color .22s}
+.task.done{animation:ux-page-in .2s ease-out}
+.task.removing{opacity:0;transform:translateX(20px) scale(.97);transition:opacity .18s,transform .18s}
+#dayBar>div,#schBar>div,.sbar>div,.bar>div{transition:width .45s cubic-bezier(.2,.7,.2,1)}
+#days{transition:opacity .16s,transform .16s}
+#days.month-out{opacity:0;transform:translateY(5px)}
+.details,.ac-fold,.ac-toc{transition:background-color .2s,border-color .2s}
+.ac-fold[open]>.ac-fb{animation:ux-page-in .22s ease-out}
+.al-i{overflow:hidden;transition:transform .22s ease,box-shadow .22s ease}
+.al-i:not(.lk):hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(20,30,60,.12)}
+.al-ic{position:relative;overflow:hidden;animation:ux-cover-float 5s ease-in-out infinite}
+.al-ic::after{content:"";position:absolute;inset:-30%;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);transform:translateX(-100%);transition:transform .7s}
+.al-i:hover .al-ic::after{transform:translateX(100%)}
+.empty{display:flex;align-items:center;gap:9px;border:1px dashed color-mix(in srgb,var(--border) 80%,var(--accent));border-radius:13px;padding:14px;margin:6px 0}
+.empty::before{content:"✧";color:var(--accent);font-size:1.25rem;line-height:1}
+.ach.on{animation:ux-page-in .28s ease-out;box-shadow:0 8px 24px color-mix(in srgb,var(--ok) 12%,transparent)}
+.ci:not(.off){animation:ux-page-in .28s ease-out}
+.chart .cbar div{transform-origin:bottom;transition:height .65s cubic-bezier(.2,.75,.2,1),filter .2s;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 72%,white),var(--accent));border-radius:6px 6px 0 0;box-shadow:inset 1px 0 rgba(255,255,255,.25),0 3px 8px color-mix(in srgb,var(--accent) 24%,transparent)}
+.chart .cb.best .cbar div{background:linear-gradient(180deg,#68d5a7,#1f9b6b);box-shadow:0 3px 8px rgba(31,155,107,.2)}
+.chart .cb.worst .cbar div{background:linear-gradient(180deg,#f4c36d,#c98a1b);box-shadow:0 3px 8px rgba(201,138,27,.2)}
+.chart .cb:hover .cbar div{filter:brightness(1.12) saturate(1.08);transform:scaleX(1.025)}
+/* Чтение статей: только тонкая линия прогресса, без закреплённой плашки */
+.art-top.stuck{position:relative!important;top:auto!important;left:auto!important;right:auto!important;padding:8px 0!important;background:none!important;backdrop-filter:none!important;box-shadow:none!important}
+#artReadLine{display:none;position:fixed;left:0;top:0;width:100%;height:3px;z-index:120;background:transparent;pointer-events:none}
+#artReadLine i{display:block;width:0;height:100%;background:linear-gradient(90deg,var(--accent),#42c6b0);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 42%,transparent);transition:width .16s linear}
+#goTopBtn{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:110;width:44px;height:44px;border:0;border-radius:50%;background:var(--accent);color:#fff;box-shadow:0 8px 22px rgba(0,0,0,.2);font-size:1.25rem;opacity:0;pointer-events:none;transform:translateY(9px);transition:opacity .2s,transform .2s}
+#goTopBtn.on{opacity:1;pointer-events:auto;transform:none}
+.al-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(135px,.55fr);gap:8px;margin:0 0 16px}
+.al-tools input,.al-tools select{min-width:0;width:100%;font:inherit;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.al-tools .al-read-filter{grid-column:1/-1}
+.al-readtag{display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:3px 8px;border-radius:99px;background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok);font-size:.7rem;font-weight:800}
+.art-actions{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 18px}
+.art-actions button{padding:8px 11px;border-radius:99px;border:1px solid var(--border);background:var(--soft);font-size:.82rem;font-weight:700}
+.art-actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.art-r h2{position:relative;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.art-r h2::after{content:"";position:absolute;bottom:-1px;left:0;width:48px;height:2px;background:var(--accent);border-radius:2px}
+.ac-fig img{cursor:zoom-in;opacity:0;transform:scale(.985);transition:opacity .45s ease,transform .45s ease,filter .3s;filter:saturate(.97)}
+.ac-fig img.img-ready{opacity:1;transform:scale(1)}
+.ac-fig img:hover{filter:saturate(1.06)}
+.ac-fig img.parallax-on{will-change:transform}
+#artLightbox{position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,10,18,.88);opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s}
+#artLightbox.open{opacity:1;visibility:visible}
+#artLightbox img{max-width:min(94vw,1200px);max-height:84vh;object-fit:contain;border-radius:14px;box-shadow:0 24px 90px rgba(0,0,0,.4);transform:scale(.96);transition:transform .25s}
+#artLightbox.open img{transform:scale(1)}
+#artLightbox button{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:18px;width:42px;height:42px;border:0;border-radius:50%;background:#fff;color:#111;font-size:1.5rem}
+#artLightbox figcaption{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:5%;right:5%;text-align:center;color:#fff;font-size:.9rem}
+.art-compare{margin:12px 0 18px;padding:14px;border:1px solid var(--border);border-radius:16px;background:var(--soft)}
+.art-compare-tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.art-compare-tools select{min-width:0;flex:1;padding:8px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text)}
+.art-compare-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.art-compare-pane{min-width:0;max-height:520px;overflow:auto;padding:12px;border-radius:12px;background:var(--surface);border:1px solid var(--border);font-size:.88rem}
+.art-compare-pane h2{font-size:1rem}.art-compare-pane img{max-width:100%;height:auto}
+.al-series{margin:20px 0;padding:14px;border:1px solid var(--border);border-radius:16px;background:var(--soft)}
+.al-series h3{margin:0 0 8px;font-size:1rem}.al-series-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.al-series button{padding:10px;border:1px solid var(--border);border-radius:11px;background:var(--surface);text-align:left;font-size:.84rem}
+.art-loading{height:100px;border-radius:14px;background:linear-gradient(90deg,var(--soft),var(--surface),var(--soft));background-size:200% 100%;animation:ux-shimmer 1.3s linear infinite}
+#planerNews{position:fixed;inset:0;z-index:240;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(5,10,18,.64)}
+#planerNews[hidden]{display:none}
+#planerNews .news-card{width:min(540px,100%);max-height:82vh;overflow:auto;padding:22px;border-radius:22px;background:var(--surface);box-shadow:0 24px 70px rgba(0,0,0,.28);animation:ux-page-in .25s ease-out}
+#planerNews h2{margin:0 0 10px}.news-close{float:right;border:0;background:var(--soft);border-radius:50%;width:34px;height:34px}
+.news-list{padding-left:1.2em}.news-list li{margin:7px 0;line-height:1.4}
+@media(max-width:600px){.art-compare-grid,.al-series-grid{grid-template-columns:minmax(0,1fr)}.al-tools{grid-template-columns:minmax(0,1fr)}.al-tools .al-read-filter{grid-column:auto}#goTopBtn{right:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px))}}
+@media(prefers-reduced-motion:reduce){#artReadLine i,.ac-fig img,#artLightbox,#artLightbox img,.al-i,.al-ic,.task,.card{transition:none!important;animation:none!important}body::before{animation:none!important}}
 </style>
 </head>
 <body>
@@ -679,6 +794,19 @@ button.ci:hover{transform:scale(1.08)}
         <div class="srow" style="margin-bottom:0"><b>Неделя начинается с</b>
           <div class="seg" id="wsSeg"><button data-ws="1">Понедельника</button><button data-ws="0">Воскресенья</button></div>
         </div>
+      </section>
+      <section class="card" id="uxSettings">
+        <h2>Персонализация Planer</h2>
+        <div class="srow"><b>Стиль интерфейса</b><div class="seg" id="uiStyleSeg"><button data-ui-style="standard">Обычный</button><button data-ui-style="glass">Стекло</button></div></div>
+        <div class="srow"><b>Расположение главной страницы</b><div class="seg" id="homeLayoutSeg"><button data-home-layout="classic">Классика</button><button data-home-layout="bento">Bento</button></div></div>
+        <div class="srow"><b>Плотность интерфейса</b><div class="seg" id="densitySeg"><button data-density="compact">Компактно</button><button data-density="normal">Обычно</button><button data-density="comfortable">Свободно</button></div></div>
+        <div class="srow"><b>Свой акцентный цвет</b><input type="color" id="customAccent" aria-label="Свой акцентный цвет" value="#3558c8" style="width:54px;height:38px;padding:2px;border:1px solid var(--border);border-radius:9px;background:var(--surface)"> <button class="link" id="resetCustomAccent">Сбросить цвет</button></div>
+        <div class="srow"><b>Блоки главной страницы</b>
+          <label class="chk"><input type="checkbox" id="homeSearchOn"> Показывать поиск</label>
+          <label class="chk" style="margin-top:8px"><input type="checkbox" id="homeNoteOn"> Показывать заметку дня</label>
+        </div>
+        <div class="srow" style="margin-bottom:0"><b>Порядок карточек</b><div class="seg" id="homeOrderSeg"><button data-home-order="calendar">Календарь первым</button><button data-home-order="tasks">Задачи первыми</button></div></div>
+        <button class="btn" id="planerNewsBtn" style="margin-top:14px">Что нового в Planer</button>
       </section>
       <section class="card">
         <h2>Эффекты</h2>
@@ -1173,7 +1301,8 @@ list.addEventListener("click",function(e){
   }else if(a==="mv"){
     moveTask(sel,t,targetKey()); haptic("light"); save(); render();
   }else if(a==="del"){
-    removeTask(sel,t,true); save(); render();
+    var delDay=sel, delTask=t; li.classList.add("removing"); b.disabled=true;
+    setTimeout(function(){ removeTask(delDay,delTask,true); save(); if(sel===delDay) render(); },180);
   }else if(a==="subadd"){
     addSub(li,t);
   }else if(a==="sdel"){
@@ -1257,7 +1386,8 @@ function curTheme(){
 }
 function applyAccent(){
   var a=ACCENTS.filter(function(x){return x.id===S.set.accent;})[0]||ACCENTS[0], dark=curTheme()==="dark";
-  root.style.setProperty("--accent",dark?a.d:a.l);
+  var custom=(typeof S.set.customAccent==="string"&&/^#[0-9a-fA-F]{6}$/.test(S.set.customAccent))?S.set.customAccent:"";
+  root.style.setProperty("--accent",custom?custom:(dark?a.d:a.l));
   var b=BGS.filter(function(x){return x.id===S.set.bg;})[0];
   if(!b||b.id==="auto"){ root.style.removeProperty("--bg"); root.style.removeProperty("--soft"); }
   else{ var v=dark?b.d:b.l; root.style.setProperty("--bg",v[0]); root.style.setProperty("--soft",v[1]); }
@@ -1695,6 +1825,75 @@ function addCat(){
 }
 $("newCatBtn").addEventListener("click",addCat);
 $("newCatName").addEventListener("keydown",function(e){ if(e.key==="Enter") addCat(); });
+
+/* ---------- Build 19: бесплатная персонализация и небольшие секреты ---------- */
+function applyUXSettings(){
+  var st=S.set||{};
+  document.body.dataset.density=st.density||"normal";
+  document.body.dataset.uiStyle=st.uiStyle||"standard";
+  document.body.dataset.layout=st.homeLayout||"classic";
+  document.body.dataset.order=st.homeOrder||"calendar";
+  $("pagePlan").classList.toggle("ux-hide-search",st.homeSearch===0);
+  $("pagePlan").classList.toggle("ux-hide-note",st.homeNote===0);
+}
+function syncUXSettings(){
+  var st=S.set||{};
+  ["uiStyleSeg","homeLayoutSeg","densitySeg","homeOrderSeg"].forEach(function(id){
+    var el=$(id); if(!el) return;
+    var key={uiStyleSeg:"uiStyle",homeLayoutSeg:"homeLayout",densitySeg:"density",homeOrderSeg:"homeOrder"}[id];
+    var attr={uiStyleSeg:"uiStyle",homeLayoutSeg:"homeLayout",densitySeg:"density",homeOrderSeg:"homeOrder"}[id];
+    el.querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed",String(b.dataset[attr]===(st[key]||({uiStyle:"standard",homeLayout:"classic",density:"normal",homeOrder:"calendar"}[key])))); });
+  });
+  if($("customAccent")) $("customAccent").value=(/^#[0-9a-fA-F]{6}$/.test(st.customAccent||""))?st.customAccent:"#3558c8";
+  if($("homeSearchOn")) $("homeSearchOn").checked=st.homeSearch!==0;
+  if($("homeNoteOn")) $("homeNoteOn").checked=st.homeNote!==0;
+}
+var _renderSettingsB19=renderSettings;
+renderSettings=function(){ _renderSettingsB19(); syncUXSettings(); applyUXSettings(); };
+["uiStyleSeg","homeLayoutSeg","densitySeg","homeOrderSeg"].forEach(function(id){
+  $(id).addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b) return;
+    var map={uiStyleSeg:["uiStyle","uiStyle"],homeLayoutSeg:["homeLayout","homeLayout"],densitySeg:["density","density"],homeOrderSeg:["homeOrder","homeOrder"]};
+    var m=map[id]; S.set[m[0]]=b.dataset[m[1]]; applyUXSettings(); syncUXSettings(); save();
+  });
+});
+$("customAccent").addEventListener("input",function(){ S.set.customAccent=this.value; applyAccent(); save(); });
+$("resetCustomAccent").addEventListener("click",function(){ delete S.set.customAccent; applyAccent(); syncUXSettings(); save(); });
+$("homeSearchOn").addEventListener("change",function(){ S.set.homeSearch=this.checked?1:0; applyUXSettings(); save(); });
+$("homeNoteOn").addEventListener("change",function(){ S.set.homeNote=this.checked?1:0; applyUXSettings(); save(); });
+applyUXSettings();
+
+/* Центр обновлений — работает автономно, без сетевых запросов. */
+var news=document.createElement("div"); news.id="planerNews"; news.hidden=true; news.setAttribute("role","dialog"); news.setAttribute("aria-modal","true");
+news.innerHTML='<div class="news-card"><button class="news-close" aria-label="Закрыть">×</button><h2>Что нового · сборка 19</h2><p class="gmuted">Обновление интерфейса, чтения и персонализации.</p><ul class="news-list"><li>Поиск и фильтры статей, отметки о прочтении.</li><li>Увеличение иллюстраций, озвучивание и сравнение материалов.</li><li>Тонкий прогресс чтения и кнопка возврата наверх.</li><li>Стеклянный стиль, Bento-сетка, акцентный цвет и плотность интерфейса.</li><li>Дополнительные анимации задач, карточек, достижений и графиков.</li><li>Пасхалка и центр обновлений.</li></ul><p class="gmuted">Все функции работают без платных API и подписок.</p></div>';
+document.body.appendChild(news);
+$("planerNewsBtn").addEventListener("click",function(){ news.hidden=false; });
+news.addEventListener("click",function(e){ if(e.target===news||e.target.closest(".news-close")) news.hidden=true; });
+document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&!news.hidden) news.hidden=true; });
+
+/* Ненавязчивая пасхалка: семь нажатий на заголовок Planer. */
+var eggClicks=0,eggTimer=0;
+$("hello").addEventListener("click",function(){
+  eggClicks++; clearTimeout(eggTimer); eggTimer=setTimeout(function(){ eggClicks=0; },1800);
+  if(eggClicks>=7){ eggClicks=0; try{ toast10("🪄 Секрет найден! Planer всегда на твоей стороне."); if(S.set.fx) burst(36,.55); haptic("success"); }catch(e){} }
+});
+
+/* Месяц календаря мягко уходит и появляется снова. */
+["prev","next"].forEach(function(id){ $(id).addEventListener("click",function(){ var d=$("days"); d.classList.add("month-out"); requestAnimationFrame(function(){ setTimeout(function(){ d.classList.remove("month-out"); },70); }); },true); });
+
+/* Графики появляются при прокрутке, подписи доступны и без анимации. */
+function animateCharts(){
+  var bars=document.querySelectorAll(".chart .cbar div");
+  bars.forEach(function(b){ if(b.dataset.uxDone) return; b.dataset.uxDone="1"; var h=b.style.height; b.style.height="0"; requestAnimationFrame(function(){ b.style.height=h; }); });
+  var ach=document.querySelectorAll(".ach.on:not(.ux-seen)"); ach.forEach(function(x){ x.classList.add("ux-seen"); });
+}
+var _renderStatsB19=renderStats;
+renderStats=function(){ _renderStatsB19(); setTimeout(animateCharts,40); };
+
+/* Кнопка возврата наверх. */
+var goTop=document.createElement("button"); goTop.id="goTopBtn"; goTop.type="button"; goTop.textContent="↑"; goTop.setAttribute("aria-label","Наверх"); goTop.title="Наверх"; document.body.appendChild(goTop);
+goTop.addEventListener("click",function(){ window.scrollTo({top:0,behavior:reduced?"auto":"smooth"}); });
+window.addEventListener("scroll",function(){ goTop.classList.toggle("on",window.pageYOffset>460); },{passive:true});
 
 /* ---------- Достижения ---------- */
 function plural(n,a,b,c){ var m=n%100, d=n%10; if(m>10&&m<20) return c; if(d===1) return a; if(d>1&&d<5) return b; return c; }
@@ -3195,26 +3394,30 @@ function openArt(id){
     var a=items.filter(function(x){ return x.id===id; })[0];
     if(!a||a.date>todayKey){ cur=null; return render(); }
     cur=a; bottom=false; t0=Date.now(); lastSaved=P()[a.id]||0; dirty=false;
+    var readLineNow=$("artReadLine"); if(readLineNow) readLineNow.style.display="block";
     page.innerHTML='<div class="art-r"><i id="artProbe" style="position:fixed;left:0;width:0;height:0;top:calc(env(safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px))"></i><div class="art-ph"><div class="art-top"><button class="art-b" id="artBack" aria-label="К списку">‹</button>'
       +'<div class="art-t"><b>'+esc(a.title)+'</b></div>'
       +'<div class="art-p"><svg viewBox="0 0 36 36"><circle class="bg" cx="18" cy="18" r="15.9155"/><circle class="fg" id="artRing" cx="18" cy="18" r="15.9155" transform="rotate(-90 18 18)" style="stroke-dasharray:'+(P()[a.id]||0)+' 100"/></svg><span id="artPct">'+(P()[a.id]||0)+'%</span></div></div></div>'
-      +'<div class="gmuted">⏱ '+a.readMin+' мин чтения · +'+a.xp+' XP</div><h1>'+esc(a.title)+'</h1><div id="artBody">Загрузка…</div></div>';
+      +'<div class="gmuted">⏱ '+a.readMin+' мин чтения · +'+a.xp+' XP</div><h1>'+esc(a.title)+'</h1>'
+      +'<div class="art-actions"><button data-art-action="speak">🔊 Слушать</button><button data-art-action="compare">⇄ Сравнить</button><button class="primary" data-art-action="read" id="artReadToggle">✓ '+(isArticleRead(a)?"Прочитано":"Отметить прочитанной")+'</button></div>'
+      +'<div class="art-compare" id="artCompare" hidden></div><div id="artBody"><div class="art-loading"></div></div></div>';
     window.scrollTo(0,0);
     fetch("content/"+a._m+"/"+a.file,{cache:"no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(function(t){
       if(cur!==a) return;
-      $("artBody").innerHTML=md(t)+'<div id="artEnd"></div><div id="artQuiz"></div>'; watch(a); prog();
+      currentArticleText=t;
+      $("artBody").innerHTML=md(t)+'<div id="artSeriesNav"></div><div id="artEnd"></div><div id="artQuiz"></div>';
+      renderArticleNavigator(a); initArticleImages(); watch(a); prog();
     }).catch(function(){ $("artBody").textContent="Не удалось загрузить статью."; });
   });
 }
 
 function prog(){
   var b=$("artBody"); if(!b||!cur||!$("artPct")) return;
-  var ph=document.querySelector(".art-ph"), tp=document.querySelector(".art-top"), pr=$("artProbe");
-  if(ph&&tp&&pr) tp.classList.toggle("stuck",ph.getBoundingClientRect().top<pr.getBoundingClientRect().top);
   var r=b.getBoundingClientRect(), tot=r.height-window.innerHeight*0.6, v=Math.round(Math.max(0,Math.min(1,tot>0?-r.top/tot:1))*100);
   if(!A()[cur.id]) remember(cur.id,v);
   var mx=Math.max(v,P()[cur.id]||0);
   $("artPct").textContent=mx+"%"; $("artRing").style.strokeDasharray=mx+" 100";
+  var line=$("artReadLine"); if(line) line.firstElementChild.style.width=mx+"%";
 }
 window.addEventListener("scroll",prog,{passive:true}); window.addEventListener("resize",prog);
 function watch(a){
@@ -3261,6 +3464,166 @@ function grade(a){
   }
   $("artRes").innerHTML=pass?"Засчитано: "+ok+"/"+n+(first?"":" (XP за эту статью уже получен)"):"Пока не засчитано: "+ok+"/"+n+". Перечитай статью и попробуй ещё раз.";
 }
+
+/* ---------- Build 19: поиск, фильтры, статусы, озвучивание и навигация статей ---------- */
+var readStoreKey="planner:article-read:v1", readMap={}, articleQuery="", articleCategory="all", articleReadFilter="all", currentArticleText="", articleTextCache={}, articleTextLoading=false;
+try{ readMap=JSON.parse(localStorage.getItem(readStoreKey)||"{}"); if(!readMap||typeof readMap!=="object") readMap={}; }catch(e){ readMap={}; }
+readMap=Object.assign({},(S.g&&S.g.artRead)||{},readMap);
+function artCategories(a){
+  var v=a.category||a.categoryName||a.cat||a.section||a.topic||null;
+  if(Array.isArray(v)) return v.map(String).filter(Boolean);
+  if(v) return [String(v)];
+  if(Array.isArray(a.tags)&&a.tags.length) return a.tags.map(String);
+  if(typeof a.tags==="string"&&a.tags.trim()) return a.tags.split(/[,;|]/).map(function(x){ return x.trim(); }).filter(Boolean);
+  return ["Без категории"];
+}
+function isArticleRead(a){ return !!(readMap[a.id]||(S.g&&S.g.artRead&&S.g.artRead[a.id])||A()[a.id]); }
+function setArticleRead(id,on){
+  if(on) readMap[id]=Date.now(); else delete readMap[id];
+  if(!S.g||typeof S.g!=="object") S.g={}; S.g.artRead=Object.assign({},readMap);
+  try{ localStorage.setItem(readStoreKey,JSON.stringify(readMap)); }catch(e){}
+  save();
+  var b=$("artReadToggle"); if(b&&cur&&cur.id===id) b.textContent=on?"✓ Прочитано":"✓ Отметить прочитанной";
+}
+function articleMatches(a){
+  var q=articleQuery.trim().toLowerCase(), txt=[a.title,a.description,a.summary,artCategories(a).join(" "),articleTextCache[a.id]||""] .join(" ").toLowerCase();
+  if(q&&txt.indexOf(q)<0) return false;
+  if(articleCategory!=="all"&&artCategories(a).indexOf(articleCategory)<0) return false;
+  if(articleReadFilter==="read"&&!isArticleRead(a)) return false;
+  if(articleReadFilter==="unread"&&isArticleRead(a)) return false;
+  return true;
+}
+function ensureArticleTextIndex(){
+  if(articleQuery.trim().length<3||articleTextLoading) return;
+  var todo=items.filter(function(a){ return !(a.id in articleTextCache); }); if(!todo.length) return;
+  articleTextLoading=true;
+  Promise.all(todo.map(function(a){
+    return fetch("content/"+a._m+"/"+a.file,{cache:"no-cache"}).then(function(r){ return r.ok?r.text():""; }).catch(function(){ return ""; }).then(function(t){ articleTextCache[a.id]=String(t||"").replace(/\s+/g," ").toLowerCase(); });
+  })).then(function(){ articleTextLoading=false; if(articleQuery.trim().length>=3&&!cur) render(); });
+}
+var _renderArticleListB19=render;
+render=function(){
+  if(pending){ var p=pending; pending=null; return openArt(p); }
+  if(cur) return openArt(cur.id);
+  fetchAll(function(){
+    dot();
+    var pr=P(), n=items.length, cont=null;
+    if(S.g.apl){ items.forEach(function(a){ if(a.id===S.g.apl&&a.date<=todayKey&&!A()[a.id]&&pr[a.id]>0) cont=a; }); }
+    var cats=[]; items.forEach(function(a){ artCategories(a).forEach(function(c){ if(cats.indexOf(c)<0) cats.push(c); }); }); cats.sort(function(a,b){ return a.localeCompare(b,"ru"); });
+    var h='<div class="al-hero'+(cont?'':' s')+'"><span class="al-pill">📖 '+plur(n).toUpperCase()+'</span><h2>Статьи</h2></div>';
+    h+='<div class="al-tools"><input id="alSearch" type="search" placeholder="Поиск по статьям" value="'+esc(articleQuery)+'" aria-label="Поиск по статьям"><select id="alCategory" aria-label="Категория"><option value="all">Все категории</option>'+cats.map(function(c){ return '<option value="'+esc(c)+'"'+(articleCategory===c?' selected':'')+'>'+esc(c)+'</option>'; }).join("")+'</select><select class="al-read-filter" id="alReadFilter" aria-label="Статус чтения"><option value="all"'+(articleReadFilter==="all"?' selected':'')+'>Все статьи</option><option value="unread"'+(articleReadFilter==="unread"?' selected':'')+'>Непрочитанные</option><option value="read"'+(articleReadFilter==="read"?' selected':'')+'>Прочитанные</option></select></div><div id="alSearchInfo" class="gmuted" style="margin:-8px 2px 10px;font-size:.75rem">Поиск по названию, рубрике и тегам</div>';
+    if(cont){
+      var ci=items.indexOf(cont), cp=pr[cont.id];
+      h+='<button class="al-btn al-cont" data-id="'+esc(cont.id)+'">'+ico(cont,n-1-ci)+'<span class="al-cm"><span class="al-top"><span class="al-tag">'+(cp>=100?"ПРОЙТИ ТЕСТ":"ПРОДОЛЖИТЬ")+'</span><span class="al-pc">'+cp+'%</span></span><b>'+esc(cont.title)+'</b><span class="al-bar"><i style="width:'+cp+'%"></i></span></span></button>';
+    }
+    var visible=items.filter(articleMatches);
+    if(!n){ h+='<div class="empty">Статей пока нет.</div>'; }
+    else if(!visible.length){ h+='<div class="empty">По выбранным условиям статей нет. Измени запрос или фильтр.</div>'; }
+    else{
+      h+='<div class="al-h">'+(articleQuery||articleCategory!=="all"||articleReadFilter!=="all"?'Результаты поиска':'Все статьи')+' · '+visible.length+'</div>';
+      visible.forEach(function(a){
+        var done=A()[a.id], read=isArticleRead(a), lock=a.date>todayKey, p=pr[a.id]||0, k=n-1-items.indexOf(a);
+        var isNew=!lock&&!done&&!p&&(new Date(todayKey)-new Date(a.date))/864e5<=3;
+        var meta1=lock?"🔒 Откроется "+fd(a.date):"🕒 "+a.readMin+" мин · "+(done?"получено "+done[1]+" XP":"+"+a.xp+" XP")+(!done&&p>0?(p>=100?" · пройди тест":" · "+p+"% чтения"):"");
+        var right=lock?"":done?'<span class="al-ok">✓</span>':'<span class="al-r">›</span>';
+        var inner=ico(a,k)+'<span class="al-tx"><span class="al-tt">'+esc(a.title)+'</span><span class="al-m">'+meta1+'</span>'
+          +(lock?'':'<span class="al-m" style="font-weight:600;opacity:.8">'+fdn(a.date)+'</span>')+(read?'<span class="al-readtag">✓ Прочитано</span>':'')+'</span>'+right+(isNew?'<span class="al-new">НОВИНКА</span>':'');
+        h+=lock?'<div class="al-i lk">'+inner+'</div>':'<button class="al-btn al-i'+(done?' dn':'')+'" data-id="'+esc(a.id)+'">'+inner+'</button>';
+      });
+    }
+    page.innerHTML=h;
+    ensureArticleTextIndex();
+    var info=$("alSearchInfo"); if(info) info.textContent=articleQuery.trim().length>=3?(articleTextLoading?"Ищу также по тексту статей…":"Поиск по названию и полному тексту") : "Поиск по названию, рубрике и тегам";
+  });
+};
+page.addEventListener("input",function(e){ if(e.target.id==="alSearch"){ articleQuery=e.target.value; var pos=e.target.selectionStart; render(); var x=$("alSearch"); if(x){ x.focus(); try{x.setSelectionRange(pos,pos);}catch(_){} } } });
+page.addEventListener("change",function(e){
+  if(e.target.id==="alCategory"){ articleCategory=e.target.value; render(); }
+  if(e.target.id==="alReadFilter"){ articleReadFilter=e.target.value; render(); }
+});
+
+function articlePlainText(src){
+  var box=document.createElement("div"); box.innerHTML=md(src||"");
+  box.querySelectorAll("script,style,button,input,svg").forEach(function(x){ x.remove(); });
+  return (box.textContent||"").replace(/\s+/g," ").trim();
+}
+function speakCurrentArticle(){
+  if(!("speechSynthesis" in window)||!window.SpeechSynthesisUtterance){ toast10("Озвучивание не поддерживается этим браузером."); return; }
+  if(window.speechSynthesis.speaking){ window.speechSynthesis.cancel(); var b=page.querySelector('[data-art-action="speak"]'); if(b) b.textContent="🔊 Слушать"; return; }
+  var txt=articlePlainText(currentArticleText); if(!txt){ toast10("Текст статьи пока не загружен."); return; }
+  var u=new SpeechSynthesisUtterance(txt); u.lang="ru-RU"; u.rate=1; u.onend=function(){ var b=page.querySelector('[data-art-action="speak"]'); if(b) b.textContent="🔊 Слушать"; };
+  window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+  var b=page.querySelector('[data-art-action="speak"]'); if(b) b.textContent="■ Остановить";
+}
+function renderArticleNavigator(a){
+  var box=$("artSeriesNav"); if(!box) return;
+  var ordered=items.slice().sort(function(x,y){ return x.date<y.date?-1:x.date>y.date?1:0; }), ix=ordered.findIndex(function(x){ return x.id===a.id; });
+  var prev=ix>0?ordered[ix-1]:null, next=ix>=0&&ix<ordered.length-1?ordered[ix+1]:null;
+  var series=a.seriesId||a.series||a.seriesTitle, members=series?items.filter(function(x){ return (x.seriesId||x.series||x.seriesTitle)===series; }):[];
+  var html='';
+  if(members.length>1){ html='<div class="al-series"><h3>Серия: '+esc(a.seriesTitle||a.series||"Материалы по теме")+'</h3><div class="al-series-grid">'+members.map(function(x,i){ return '<button data-series-id="'+esc(x.id)+'">'+(i+1)+'. '+esc(x.title)+(x.id===a.id?' · Сейчас':'')+'</button>'; }).join("")+'</div></div>'; }
+  else if(prev||next){ html='<div class="al-series"><h3>Навигация по материалам</h3><div class="al-series-grid">'+(prev?'<button data-series-id="'+esc(prev.id)+'">← Ранее: '+esc(prev.title)+'</button>':'<span></span>')+(next?'<button data-series-id="'+esc(next.id)+'">Далее: '+esc(next.title)+' →</button>':'')+'</div></div>'; }
+  box.innerHTML=html;
+}
+page.addEventListener("click",function(e){
+  var act=e.target.closest("[data-art-action]");
+  if(act){
+    var a=act.getAttribute("data-art-action");
+    if(a==="read"){ setArticleRead(cur.id,!isArticleRead(cur)); var rb=$("artReadToggle"); if(rb) rb.textContent=isArticleRead(cur)?"✓ Прочитано":"✓ Отметить прочитанной"; }
+    if(a==="speak") speakCurrentArticle();
+    if(a==="compare") openComparePanel();
+    return;
+  }
+  var sid=e.target.closest("[data-series-id]"); if(sid){ if(window.speechSynthesis) window.speechSynthesis.cancel(); openArt(sid.dataset.seriesId); window.scrollTo({top:0,behavior:"smooth"}); }
+});
+function openComparePanel(){
+  var box=$("artCompare"); if(!box) return;
+  box.hidden=false;
+  var opts=items.filter(function(x){ return x.id!==cur.id&&x.date<=todayKey; });
+  if(!opts.length){ box.innerHTML='<p>Пока нет второй доступной статьи для сравнения.</p>'; return; }
+  box.innerHTML='<b>Сравнить текущую статью с:</b><div class="art-compare-tools"><select id="artComparePick">'+opts.map(function(x){ return '<option value="'+esc(x.id)+'">'+esc(x.title)+'</option>'; }).join("")+'</select><button class="btn" id="artCompareGo">Сравнить</button></div><div id="artCompareResult"></div>';
+  $("artCompareGo").onclick=function(){
+    var other=items.filter(function(x){ return x.id===$("artComparePick").value; })[0]; if(!other) return;
+    var result=$("artCompareResult"); result.innerHTML='<div class="art-loading"></div>';
+    fetch("content/"+other._m+"/"+other.file,{cache:"no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(function(text){
+      if(!result.isConnected) return;
+      result.innerHTML='<div class="art-compare-grid"><section class="art-compare-pane"><b>'+esc(cur.title)+'</b>'+md(currentArticleText)+'</section><section class="art-compare-pane"><b>'+esc(other.title)+'</b>'+md(text)+'</section></div>';
+      Array.prototype.forEach.call(result.querySelectorAll("img"),function(img){ img.classList.add("img-ready"); });
+    }).catch(function(){ result.textContent="Не удалось загрузить вторую статью для сравнения."; });
+  };
+  box.scrollIntoView({behavior:reduced?"auto":"smooth",block:"nearest"});
+}
+
+/* Увеличение картинок, плавное появление и лёгкий параллакс. */
+var lightbox=document.createElement("div"); lightbox.id="artLightbox"; lightbox.innerHTML='<button type="button" aria-label="Закрыть">×</button><img alt=""><figcaption></figcaption>'; document.body.appendChild(lightbox);
+function closeLightbox(){ lightbox.classList.remove("open"); }
+lightbox.addEventListener("click",function(e){ if(e.target===lightbox||e.target.closest("button")) closeLightbox(); });
+document.addEventListener("keydown",function(e){ if(e.key==="Escape") closeLightbox(); });
+page.addEventListener("click",function(e){
+  var img=e.target.closest(".ac-fig img"); if(!img) return;
+  var big=lightbox.querySelector("img"); big.src=img.src; big.alt=img.alt||"";
+  lightbox.querySelector("figcaption").textContent=img.alt||"";
+  lightbox.classList.add("open");
+});
+function initArticleImages(){
+  var imgs=page.querySelectorAll(".ac-fig img");
+  if("IntersectionObserver" in window){
+    var io=new IntersectionObserver(function(entries){ entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add("img-ready"); io.unobserve(en.target); } }); },{rootMargin:"80px"});
+    imgs.forEach(function(img){ io.observe(img); });
+  }else imgs.forEach(function(img){ img.classList.add("img-ready"); });
+  imgs.forEach(function(img){
+    img.classList.add("parallax-on");
+    img.addEventListener("mousemove",function(e){ if(reduced||!window.matchMedia("(hover:hover)").matches) return; var r=img.getBoundingClientRect(), x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5; img.style.transform="scale(1.015) perspective(700px) rotateX("+(-y*2)+"deg) rotateY("+(x*2)+"deg)"; });
+    img.addEventListener("mouseleave",function(){ img.style.transform=""; });
+  });
+}
+
+/* Тонкий прогресс чтения и инициализация плавающей кнопки. */
+var readLine=document.createElement("div"); readLine.id="artReadLine"; readLine.innerHTML="<i></i>"; document.body.appendChild(readLine);
+var _openArtB19=openArt;
+openArt=function(id){ if(window.speechSynthesis) try{window.speechSynthesis.cancel();}catch(e){} currentArticleText=""; readLine.style.display="block"; _openArtB19(id); window.scrollTo({top:0,behavior:reduced?"auto":"smooth"}); };
+var _showTabB19=showTab; showTab=function(name){ _showTabB19(name); readLine.style.display=(name==="art"&&!!cur)?"block":"none"; };
+page.addEventListener("click",function(e){ if(e.target.closest("#artBack")){ readLine.style.display="none"; if(window.speechSynthesis) try{window.speechSynthesis.cancel();}catch(_){}} });
 
 var m=(location.search+location.hash).match(/article=([\w-]+)/);
 if(m){ pending=m[1]; showTab("art"); } else fetchAll(dot);
