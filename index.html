@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- Планер задач · сборка 20 -->
+<!-- Планер задач · сборка 21 -->
 <html lang="ru">
 <head>
 <script>
 /* Самообновление. Номер сборки ОДИН и тот же здесь и в version.json — при каждом релизе поднимай оба.
    Если на сайте сборка новее, страница перезагружается с ?v=N и обходит кэш Telegram.
    Проверка идёт при запуске и каждый раз, когда мини-апп снова открывают из свёрнутого состояния. */
-window.APP_BUILD=20;
+window.APP_BUILD=21;
 (function(){
   function check(){ try{
     fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
@@ -3861,6 +3861,749 @@ page.addEventListener("click",function(e){ if(e.target.closest("#artBack")){ rea
 var m=(location.search+location.hash).match(/article=([\w-]+)/);
 if(m){ pending=m[1]; showTab("art"); } else fetchAll(dot);
 window.Art={xp:xp};
+})();
+
+/* ---------- BUILD 21: прогрессия, магазин, серии, секреты и события ---------- */
+(function installBuild21(){
+  "use strict";
+  if(window.__PLANER_BUILD21__) return;
+  window.__PLANER_BUILD21__=true;
+
+  function obj(v){ return v&&typeof v==="object"&&!Array.isArray(v)?v:{}; }
+  function arr(v){ return Array.isArray(v)?v:[]; }
+  function ensureB21(){
+    S.g=obj(S.g);
+    S.g.inventory=obj(S.g.inventory);
+    S.g.cosmetics=obj(S.g.cosmetics);
+    S.g.equipped=obj(S.g.equipped);
+    S.g.featureUnlocks=obj(S.g.featureUnlocks);
+    S.g.freezeDates=arr(S.g.freezeDates);
+    S.g.rewardHistory=arr(S.g.rewardHistory);
+    S.g.branchClaims=obj(S.g.branchClaims);
+    S.g.branchChoice=obj(S.g.branchChoice);
+    S.g.choiceRewards=obj(S.g.choiceRewards);
+    S.g.sectionsVisited=obj(S.g.sectionsVisited);
+    S.g.botPrefs=Object.assign({weekly:1,seasonal:1,holiday:1,level:1,rare:0},obj(S.g.botPrefs));
+    S.g.themeWeeks=obj(S.g.themeWeeks);
+    S.g.trialClaims=obj(S.g.trialClaims);
+    S.g.holidayClaims=obj(S.g.holidayClaims);
+    S.g.hiddenSecrets=obj(S.g.hiddenSecrets);
+    S.g.hiddenAch=obj(S.g.hiddenAch);
+    S.g.milestoneReached=obj(S.g.milestoneReached);
+    S.g.rareAwarded=obj(S.g.rareAwarded);
+    S.g.achievementSeries=obj(S.g.achievementSeries);
+    S.g.seasonalItems=obj(S.g.seasonalItems);
+    S.g.equipped.frame=S.g.equipped.frame||"";
+    S.g.equipped.theme=S.g.equipped.theme||"";
+    S.g.equipped.effect=S.g.equipped.effect||"";
+    S.g.equipped.badge=S.g.equipped.badge||"";
+  }
+  ensureB21();
+
+  var style=document.createElement("style");
+  style.id="planerBuild21Style";
+  style.textContent=
+    ".b21-card{margin-top:14px}.b21-details{border-top:1px solid var(--border);padding:10px 0}.b21-details:first-of-type{border-top:0}.b21-details>summary{cursor:pointer;font-weight:750;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px}.b21-details>summary::-webkit-details-marker{display:none}.b21-details>summary:after{content:'＋';color:var(--muted);font-weight:500}.b21-details[open]>summary:after{content:'−'}.b21-body{padding-top:12px}.b21-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:9px}.b21-item{border:1px solid var(--border);border-radius:13px;padding:11px;background:var(--surface);min-width:0}.b21-item b{display:block}.b21-item p{font-size:.82rem;color:var(--muted);margin:5px 0 8px}.b21-item .btn,.b21-item .ico{margin-top:4px}.b21-muted{font-size:.8rem;color:var(--muted)}.b21-pill{display:inline-flex;align-items:center;gap:5px;border-radius:99px;background:var(--soft);padding:4px 9px;font-size:.75rem;color:var(--muted)}.b21-meter{height:8px;background:var(--soft);border-radius:99px;overflow:hidden;margin:8px 0}.b21-meter i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--ok));border-radius:99px;transition:width .35s}.b21-shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:8px}.b21-shop .b21-item{display:flex;flex-direction:column}.b21-shop .b21-item button{margin-top:auto}.b21-locked{opacity:.62}.b21-rare{border-color:#d39b2b;box-shadow:inset 0 0 0 1px rgba(211,155,43,.13)}.b21-rare .b21-pill{color:#a97813}.b21-streaks{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}.b21-streak{background:var(--soft);border-radius:12px;padding:10px}.b21-streak b{font-size:1.3rem;display:block}.b21-streak small{color:var(--muted)}.b21-choice{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.b21-choice button{flex:1 1 145px}.b21-history{max-height:260px;overflow:auto}.b21-history .xrow{font-size:.82rem}.b21-secret{letter-spacing:.12em}.b21-reward-history{margin-top:8px}.b21-notice{background:var(--soft);border-radius:10px;padding:10px;font-size:.8rem;color:var(--muted);margin-top:10px}.b21-profile-theme-aurora{background:linear-gradient(135deg,rgba(79,70,229,.15),rgba(16,185,129,.12))!important}.b21-profile-theme-forest{background:linear-gradient(135deg,rgba(22,101,52,.16),rgba(132,204,22,.12))!important}.b21-profile-theme-ember{background:linear-gradient(135deg,rgba(234,88,12,.16),rgba(190,24,93,.12))!important}.b21-frame-emerald{border:4px solid #22a06b!important;box-shadow:0 0 0 3px rgba(34,160,107,.18),0 0 18px rgba(34,160,107,.25)!important}.b21-frame-neon{border:4px solid #8b5cf6!important;box-shadow:0 0 0 3px rgba(139,92,246,.2),0 0 20px rgba(139,92,246,.35)!important}.b21-frame-starlight{border:4px solid #d7b95e!important;box-shadow:0 0 0 3px rgba(215,185,94,.2),0 0 22px rgba(215,185,94,.35)!important}.b21-effect-stars{animation:b21-stars 3.5s ease-in-out infinite}.b21-profile-badge{display:inline-block;margin-left:6px;border-radius:99px;padding:2px 7px;background:var(--soft);font-size:.78rem}.b21-secret-glow{border-color:#b68cff!important;box-shadow:0 0 22px rgba(182,140,255,.28)!important}.b21-profile-theme-autumn{background:linear-gradient(135deg,rgba(180,83,9,.18),rgba(234,179,8,.14))!important}.b21-profile-theme-winter{background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(165,243,252,.18))!important}.b21-profile-theme-spring{background:linear-gradient(135deg,rgba(236,72,153,.16),rgba(134,239,172,.15))!important}.b21-profile-theme-summer{background:linear-gradient(135deg,rgba(234,179,8,.17),rgba(14,165,233,.13))!important}.b21-frame-autumn{border:4px solid #bd6b2c!important;box-shadow:0 0 15px rgba(189,107,44,.25)!important}.b21-frame-frost{border:4px solid #7dd3fc!important;box-shadow:0 0 15px rgba(125,211,252,.32)!important}.b21-frame-blossom{border:4px solid #ec8eb9!important;box-shadow:0 0 15px rgba(236,142,185,.28)!important}.b21-frame-sun{border:4px solid #eab308!important;box-shadow:0 0 15px rgba(234,179,8,.28)!important}@keyframes b21-stars{0%,100%{filter:drop-shadow(0 0 0 transparent)}50%{filter:drop-shadow(0 0 9px rgba(180,140,255,.7))}}body.b21-night{background-image:radial-gradient(circle at 15% 12%,rgba(108,95,205,.12),transparent 35%),radial-gradient(circle at 85% 80%,rgba(55,110,165,.12),transparent 38%)}.b21-level-burst{animation:b21-level .8s cubic-bezier(.2,.9,.3,1.2)}@keyframes b21-level{0%{transform:scale(.96);filter:brightness(1)}45%{transform:scale(1.025);filter:brightness(1.12)}100%{transform:scale(1);filter:none}}.b21-week{border-left:4px solid var(--accent)}.b21-row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border)}.b21-row:last-child{border-bottom:0}@media(max-width:520px){.b21-shop{grid-template-columns:1fr 1fr}.b21-shop .b21-item{padding:9px}.b21-details>summary{font-size:.92rem}}";
+  document.head.appendChild(style);
+
+  function pushHistory(kind,title,detail){
+    ensureB21();
+    S.g.rewardHistory.push({at:Date.now(),kind:String(kind||"reward"),title:String(title||"Награда"),detail:String(detail||"")});
+    while(S.g.rewardHistory.length>80) S.g.rewardHistory.shift();
+  }
+  function weekStartKey(k){ var d=pkey(k), shift=(d.getDay()+6)%7; d.setDate(d.getDate()-shift); return dkey(d); }
+  function weekKey(k){ return weekStartKey(k); }
+  function weekEndKey(k){ return addDays(weekStartKey(k),6); }
+  function weekNumber(k){ return Math.floor(pkey(weekStartKey(k)).getTime()/604800000); }
+  function seasonInfo(d){
+    d=d||new Date(); var m=d.getMonth();
+    if(m===11||m<=1) return {id:"winter",name:"Зима",emoji:"❄️"};
+    if(m>=2&&m<=4) return {id:"spring",name:"Весна",emoji:"🌸"};
+    if(m>=5&&m<=7) return {id:"summer",name:"Лето",emoji:"☀️"};
+    return {id:"autumn",name:"Осень",emoji:"🍂"};
+  }
+  function dateSet(kind){
+    ensureB21(); var set={};
+    if(kind==="tasks"||kind==="activity") Object.keys(store).forEach(function(k){
+      var a=store[k]||[]; if(a.some(function(t){return !!(t.d||t.pass);})) set[k]=1;
+    });
+    if(kind==="schedule"||kind==="activity") Object.keys(S.sched||{}).forEach(function(k){
+      if((S.sched[k]||[]).some(function(e){return !!e.d;})) set[k]=1;
+    });
+    if(kind==="challenges"||kind==="activity") Object.keys(chStore||{}).forEach(function(mk){
+      var month=chStore[mk]||{}, its=month.items||[];
+      its.forEach(function(it){
+        Object.keys(it.done||{}).forEach(function(day){ if(it.done[day]) set[mk+"-"+String(day).padStart(2,"0")]=1; });
+        Object.keys(it.vals||{}).forEach(function(day){ if(+it.vals[day]>0) set[mk+"-"+String(day).padStart(2,"0")]=1; });
+      });
+    });
+    if(kind==="reading"||kind==="activity"){
+      var read=Object.assign({},S.g.artRead||{});
+      Object.keys(read).forEach(function(id){ var v=+read[id]||0; if(v){ var dt=new Date(v); if(!isNaN(dt.getTime())) set[dkey(dt)]=1; } });
+    }
+    S.g.freezeDates.forEach(function(k){ set[k]=1; });
+    return set;
+  }
+  function bestRun(set){
+    var keys=Object.keys(set).sort(), best=0, run=0, prev="";
+    keys.forEach(function(k){ run=prev&&addDays(prev,1)===k?run+1:1; if(run>best) best=run; prev=k; });
+    return best;
+  }
+  function currentRun(set){
+    var k=todayKey, n=0, guard=0;
+    if(!set[k]) k=addDays(k,-1);
+    while(set[k]&&guard++<6000){ n++; k=addDays(k,-1); }
+    return n;
+  }
+  function streakMetrics(){
+    var names=["tasks","schedule","challenges","reading","activity"], out={};
+    names.forEach(function(n){ var set=dateSet(n); out[n]={current:currentRun(set),best:bestRun(set),set:set}; });
+    return out;
+  }
+  function canUseFreeze(){
+    ensureB21();
+    if((+S.g.inventory["streak-freeze"]||0)<1) return false;
+    var y=addDays(todayKey,-1); if(S.g.freezeDates.indexOf(y)>=0) return false;
+    var before=addDays(y,-1), m=streakMetrics();
+    return ["tasks","schedule","challenges","reading","activity"].some(function(k){return !!m[k].set[before]&&!m[k].set[y];});
+  }
+  function spendXP(amount,reason){
+    amount=Math.max(0,Math.floor(+amount||0)); var bal=calcXP();
+    if(!amount||bal<amount) return false;
+    if(!S.xl) calcXP(); var X=S.xl;
+    X.penalty=(+X.penalty||0)+amount;
+    X.h.push([Date.now(),-amount,reason||"shop"]);
+    while(X.h.length>80) X.h.shift();
+    persist(); touch(); return true;
+  }
+  function grantXP(amount,reason,title){
+    amount=Math.max(0,Math.floor(+amount||0)); if(!amount) return;
+    calcXP(); if(!S.xl) calcXP(); var X=S.xl;
+    X.k=(+X.k||0)+amount;
+    X.h.push([Date.now(),amount,reason||"bonus"]);
+    while(X.h.length>80) X.h.shift();
+    X.pk=Math.max(+X.pk||0,calcXP()+(+X.penalty||0));
+    pushHistory("xp",title||((XPN&&XPN[reason])||"Бонус XP"),"+"+amount+" XP");
+    persist(); touch();
+    try{ checkLevel(levelInfo()); }catch(e){}
+  }
+
+  /* XP за важные и своевременные задачи, недельные результаты и разнообразие.
+     Повторяемые начисления ограничены на день; сохранённый XP не пропадает при удалении записей. */
+  var _xpPartsB20=xpParts;
+  xpParts=function(){
+    var p=_xpPartsB20();
+    p.t=0; p.e=0; p.c=0; p.imp=0; p.ontime=0; p.weekly=0; p.diversity=0;
+    var keys=Object.keys(store||{}).sort();
+    keys.forEach(function(k){
+      var done=(store[k]||[]).filter(function(t){return t.d&&!t.pass;});
+      p.t+=Math.min(20,done.length)*10;
+      p.imp+=Math.min(10,done.filter(function(t){return !!t.i;}).length)*3;
+      p.ontime+=Math.min(10,done.filter(function(t){return !!t.onTime;}).length)*2;
+      var cats={}; done.forEach(function(t){ if(t.c) cats[t.c]=1; });
+      if(Object.keys(cats).length>=3) p.diversity+=10;
+    });
+    Object.keys(S.sched||{}).forEach(function(k){ var n=(S.sched[k]||[]).filter(function(e){return e.d;}).length; p.e+=Math.min(12,n)*3; });
+    Object.keys(chStore||{}).forEach(function(mk){
+      var its=(chStore[mk]&&chStore[mk].items)||[], days={};
+      its.forEach(function(it){
+        Object.keys(it.done||{}).forEach(function(d){ if(it.done[d]) days[mk+"-"+String(d).padStart(2,"0")]=(days[mk+"-"+String(d).padStart(2,"0")]||0)+1; });
+        Object.keys(it.vals||{}).forEach(function(d){ if(+it.vals[d]>0) days[mk+"-"+String(d).padStart(2,"0")]=(days[mk+"-"+String(d).padStart(2,"0")]||0)+1; });
+      });
+      Object.keys(days).forEach(function(d){ p.c+=Math.min(12,days[d])*5; });
+    });
+    if(keys.length){
+      var first=weekStartKey(keys[0]), week=first, guard=0;
+      while(weekEndKey(week)<todayKey&&guard++<900){
+        var end=weekEndKey(week), total=0, doneN=0;
+        Object.keys(store).forEach(function(k){ if(k>=week&&k<=end){ (store[k]||[]).forEach(function(t){ total++; if(t.d&&!t.pass) doneN++; }); } });
+        if(total>=5&&doneN/total>=.8) p.weekly+=40;
+        week=addDays(week,7);
+      }
+    }
+    return p;
+  };
+  XPN.imp="Важные задачи"; XPN.ontime="Выполнено вовремя"; XPN.weekly="Итоги недели"; XPN.diversity="Разнообразие";
+  XPN.shop="Покупка в магазине"; XPN.theme="Тематическая неделя"; XPN.trial="Испытание недели"; XPN.holiday="Праздничное задание"; XPN.series="Серия достижений"; XPN.rare="Редкая награда";
+
+  /* Отмечаем реальные моменты выполнения, чтобы бонус за срок нельзя было получить задним числом. */
+  if(typeof list!=="undefined"&&list){
+    list.addEventListener("change",function(e){
+      var el=e.target, a=el&&el.dataset&&el.dataset.a, li=el&&el.closest("li.task"); if(!li) return;
+      var t=(tasksOf(sel)||[]).filter(function(x){return x.id===li.dataset.id;})[0]; if(!t||t.pass) return;
+      function stampDone(){
+        t.doneAt=Date.now(); delete t.onTime;
+        if(sel===todayKey&&t.tm&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t.tm)){
+          var p=t.tm.split(":"); var due=new Date(); due.setHours(+p[0],+p[1],0,0);
+          if(t.doneAt<=due.getTime()) t.onTime=1;
+        }
+      }
+      if(a==="chk"){
+        if(el.checked&&!t.d) stampDone();
+        if(!el.checked){ delete t.doneAt; delete t.onTime; }
+      }else if(a==="schk"){
+        var si=+(el.closest("li[data-si]")||{}).dataset?.si;
+        var all=(t.s||[]).every(function(x,i){return i===si?el.checked:!!x.d;});
+        if(all&&!t.d) stampDone();
+        if(!all){ delete t.doneAt; delete t.onTime; }
+      }
+    },true);
+    list.addEventListener("change",function(e){
+      if(e.target&&e.target.dataset&&e.target.dataset.a==="chk"&&e.target.checked&&Math.random()<.018){
+        var lines=["Маленький шаг тоже считается.","Хороший темп, продолжай в своём ритме.","План постепенно превращается в результат.","Вот это последовательность!","Ты продвинулся ещё на один шаг."];
+        setTimeout(function(){ toast10(lines[Math.floor(Math.random()*lines.length)]); },80);
+      }
+    });
+  }
+
+  function levelNeed(n){
+    n=Math.max(1,Math.floor(+n||1));
+    if(n<=25) return 50*n*(n-1);
+    var d=n-25;
+    return Math.round(30000+5000*d+150*d*d+2*d*d*d);
+  }
+  var _levelInfoB20=levelInfo;
+  levelInfo=function(){
+    var balance=calcXP(), penalty=S.xl?(+S.xl.penalty||0):0, earned=balance+penalty, L=1, guard=0;
+    while(earned>=levelNeed(L+1)&&guard++<10000) L++;
+    return {xp:earned,balance:balance,L:L,lo:levelNeed(L),hi:levelNeed(L+1)};
+  };
+  xpLevelsCard=function(lv){
+    var rows="", from=Math.max(1,lv.L-1);
+    for(var n=from;n<=lv.L+6;n++){
+      var need=levelNeed(n), cur=n===lv.L;
+      rows+='<div class="xrow'+(cur?" xcur":"")+'"><span>'+(n<lv.L?"✓":cur?"▶":"○")+' Уровень '+n+(n===100?' · рубеж':'')+'</span><span class="gmuted">'+fmtFull(need)+' XP'+(n>lv.L?' · ещё '+fmtFull(Math.max(0,need-lv.xp)):'')+'</span></div>';
+    }
+    return '<section class="card"><div class="head"><h2>Уровни</h2><span class="gmuted">До уровня '+(lv.L+1)+': '+fmtFull(lv.hi-lv.xp)+' XP</span></div><div class="b21-meter"><i style="width:'+pct(lv.xp-lv.lo,lv.hi-lv.lo)+'%"></i></div>'+rows+'<p class="b21-muted">Уровень 100 требует '+fmtFull(levelNeed(100))+' XP суммарно. После него уровни продолжаются.</p></section>';
+  };
+  var _xpRowsB20=xpRows;
+  xpRows=function(n){
+    var X=S.xl; if(!X) return "";
+    return X.h.slice(-n).reverse().map(function(e){
+      var d=new Date(e[0]), dt=d.toLocaleDateString("ru-RU",{day:"numeric",month:"short"})+" "+pad(d.getHours())+":"+pad(d.getMinutes());
+      var lab=e[2]==="init"?"Старт журнала (перенесённый XP)":(XPN[e[2]]||e[2]);
+      var v=e[1]<0?'<b style="color:#c98a1b">−'+Math.abs(e[1])+' XP</b>':e[1]>0?'<b style="color:var(--accent)">+'+e[1]+' XP</b>':'<span class="gmuted">0 XP</span>';
+      return '<div class="xrow"><span>'+dt+' · '+esc(lab)+'</span>'+v+'</div>';
+    }).join("");
+  };
+
+  var extraRewards=[
+    {id:"b21-theme-aurora",level:10,title:"Тема «Аврора»",desc:"Открывает дополнительное оформление карточки профиля.",slot:"theme",value:"aurora"},
+    {id:"b21-streak-widget",level:15,title:"Виджет серий",desc:"Открывает расширенную карточку серий в профиле.",slot:"feature",value:"streakWidget"},
+    {id:"b21-badge-explorer",level:25,title:"Значок исследователя",desc:"Новый значок для карточки профиля.",slot:"badge",value:"explorer"},
+    {id:"b21-seasonal-tools",level:30,title:"Сезонная коллекция",desc:"Открывает дополнительные сезонные предметы в магазине.",slot:"feature",value:"seasonalShop"},
+    {id:"b21-theme-ember",level:40,title:"Тема «Сумерки»",desc:"Тёплый декоративный стиль профиля.",slot:"theme",value:"ember"},
+    {id:"b21-stars-effect",level:50,title:"Эффект звёзд",desc:"Мягкая анимация для аватара.",slot:"effect",value:"stars"},
+    {id:"b21-frame-starlight",level:75,title:"Рамка «Звёздный свет»",desc:"Редкая рамка высокого уровня.",slot:"frame",value:"starlight"},
+    {id:"b21-frame-relic",level:100,title:"Реликтовая рамка",desc:"Особая награда за крайне сложный рубеж 100 уровня.",slot:"frame",value:"relic"}
+  ];
+  extraRewards.forEach(function(r){ if(!LEVEL_REWARDS.some(function(x){return x.id===r.id;})) LEVEL_REWARDS.push(r); });
+  var _rewardActiveB20=rewardActive, _applyRewardB20=applyReward;
+  rewardActive=function(r){
+    if(r.slot==="theme") return S.g.equipped.theme===r.value;
+    if(r.slot==="feature") return !!S.g.featureUnlocks[r.value];
+    if(r.slot==="badge") return S.g.equipped.badge===r.value;
+    if(r.slot==="frame"&&["emerald","neon","starlight","relic"].indexOf(r.value)>=0) return S.g.equipped.frame===r.value;
+    if(r.slot==="effect"&&r.value==="stars") return S.g.equipped.effect==="stars";
+    return _rewardActiveB20(r);
+  };
+  applyReward=function(r){
+    _applyRewardB20(r);
+    if(r.slot==="theme") S.g.equipped.theme=r.value;
+    else if(r.slot==="feature") S.g.featureUnlocks[r.value]=1;
+    else if(r.slot==="badge") S.g.equipped.badge=r.value;
+    else if(r.slot==="frame"&&["emerald","neon","starlight","relic"].indexOf(r.value)>=0) S.g.equipped.frame=r.value;
+    else if(r.slot==="effect"&&r.value==="stars") S.g.equipped.effect="stars";
+    pushHistory("level",r.title,"Награда за уровень "+r.level);
+  };
+  checkLevel=function(lv){
+    ensureB21(); var old=+S.g.lv||0, fresh=lv.L>old;
+    if(!S.g.lv||lv.L>old){ S.g.lv=lv.L; }
+    var milestones=[3,5,8,10,15,20,25,30,40,50,60,75,100];
+    if(!S.g.milestoneReached) S.g.milestoneReached={};
+    milestones.forEach(function(n){ if(lv.L>=n) S.g.milestoneReached[n]=1; });
+    if(fresh&&old>0){
+      var delta=lv.L-old;
+      toast10("⭐ Уровень "+lv.L+(delta>1?" · серия повышений ×"+delta:""));
+      if(S.set.fx) burst(delta>1?210:90,.4);
+      var c=$("gameBox"); if(c){ c.classList.remove("b21-level-burst"); void c.offsetWidth; c.classList.add("b21-level-burst"); }
+      haptic("success");
+      pushHistory("level","Уровень "+lv.L,delta>1?"Повышение на "+delta+" уровня":"Новый уровень");
+      if(lv.L>=100) discoverSecret("century","Секретный рубеж",180);
+    }
+    if(fresh||!old){ persist(); touch(); }
+  };
+
+  var SHOP_ITEMS=[
+    {id:"streak-freeze",name:"Заморозка серии",emoji:"🧊",cost:260,kind:"consumable",desc:"Один раз закрыть пропущенный день, сохранив серию."},
+    {id:"frame-emerald",name:"Изумрудная рамка",emoji:"🟢",cost:520,kind:"frame",value:"emerald",desc:"Зелёная рамка профиля."},
+    {id:"frame-neon",name:"Неоновая рамка",emoji:"💜",cost:850,kind:"frame",value:"neon",desc:"Фиолетовая рамка с мягким свечением."},
+    {id:"theme-forest",name:"Тема «Лес»",emoji:"🌲",cost:720,kind:"theme",value:"forest",desc:"Спокойное зелёное оформление карточки."},
+    {id:"effect-stars",name:"Звёздный эффект",emoji:"✨",cost:940,kind:"effect",value:"stars",desc:"Ненавязчивая анимация вокруг аватара."},
+    {id:"badge-comet",name:"Значок «Комета»",emoji:"☄️",cost:480,kind:"badge",value:"comet",desc:"Декоративный значок профиля."},
+    {id:"bundle-focus",name:"Набор «Фокус»",emoji:"🎁",cost:1650,kind:"bundle",contents:["streak-freeze","frame-emerald","badge-comet"],desc:"Заморозка серии, рамка и значок вместе."}
+  ];
+  var RARE_ITEMS=[
+    {id:"rare-frame-starlight",name:"Рамка «Звёздный час»",emoji:"🌠",cost:1650,kind:"frame",value:"starlight",desc:"Редкий предмет недели."},
+    {id:"rare-theme-eclipse",name:"Тема «Затмение»",emoji:"🌘",cost:1850,kind:"theme",value:"ember",desc:"Редкий предмет недели."},
+    {id:"rare-badge-phoenix",name:"Значок «Феникс»",emoji:"🔥",cost:1450,kind:"badge",value:"phoenix",desc:"Редкий предмет недели."}
+  ];
+  var SEASON_ITEMS={
+    autumn:[
+      {id:"season-autumn-theme",name:"Тема «Золотая осень»",emoji:"🍁",cost:760,kind:"theme",value:"autumn",desc:"Тёплые осенние оттенки профиля."},
+      {id:"season-autumn-frame",name:"Рамка «Листопад»",emoji:"🍂",cost:920,kind:"frame",value:"autumn",desc:"Рамка из осенней коллекции."},
+      {id:"season-autumn-badge",name:"Значок «Лист»",emoji:"🌿",cost:520,kind:"badge",value:"leaf",desc:"Сезонный значок профиля."}
+    ],
+    winter:[
+      {id:"season-winter-theme",name:"Тема «Северное сияние»",emoji:"❄️",cost:760,kind:"theme",value:"winter",desc:"Холодные зимние оттенки профиля."},
+      {id:"season-winter-frame",name:"Рамка «Иней»",emoji:"🧊",cost:920,kind:"frame",value:"frost",desc:"Рамка из зимней коллекции."},
+      {id:"season-winter-badge",name:"Значок «Снежинка»",emoji:"❄️",cost:520,kind:"badge",value:"snowflake",desc:"Сезонный значок профиля."}
+    ],
+    spring:[
+      {id:"season-spring-theme",name:"Тема «Цветение»",emoji:"🌸",cost:760,kind:"theme",value:"spring",desc:"Мягкие весенние оттенки профиля."},
+      {id:"season-spring-frame",name:"Рамка «Сакура»",emoji:"🌺",cost:920,kind:"frame",value:"blossom",desc:"Рамка из весенней коллекции."},
+      {id:"season-spring-badge",name:"Значок «Цветок»",emoji:"🌷",cost:520,kind:"badge",value:"flower",desc:"Сезонный значок профиля."}
+    ],
+    summer:[
+      {id:"season-summer-theme",name:"Тема «Летний берег»",emoji:"☀️",cost:760,kind:"theme",value:"summer",desc:"Солнечные летние оттенки профиля."},
+      {id:"season-summer-frame",name:"Рамка «Солнце»",emoji:"🌞",cost:920,kind:"frame",value:"sun",desc:"Рамка из летней коллекции."},
+      {id:"season-summer-badge",name:"Значок «Солнце»",emoji:"🌻",cost:520,kind:"badge",value:"sun",desc:"Сезонный значок профиля."}
+    ]
+  };
+  function allSeasonItems(){ return Object.keys(SEASON_ITEMS).reduce(function(a,k){return a.concat(SEASON_ITEMS[k]);},[]); }
+  function rareItem(){ return RARE_ITEMS[((weekNumber(todayKey)%RARE_ITEMS.length)+RARE_ITEMS.length)%RARE_ITEMS.length]; }
+  function owned(id){ ensureB21(); return !!S.g.cosmetics[id]; }
+  function shopList(){ var list=SHOP_ITEMS.slice(); list.push(rareItem()); if(S.g.featureUnlocks.seasonalShop) list=list.concat(SEASON_ITEMS[seasonInfo().id]||[]); return list; }
+  function ownShopItem(item){
+    if(item.id==="streak-freeze") S.g.inventory["streak-freeze"]=(+S.g.inventory["streak-freeze"]||0)+1;
+    else if(item.kind==="bundle"){
+      (item.contents||[]).forEach(function(id){ var it=SHOP_ITEMS.filter(function(x){return x.id===id;})[0]; if(it) ownShopItem(it); });
+      S.g.cosmetics[item.id]=1;
+    }else S.g.cosmetics[item.id]=1;
+    if(item.kind==="frame") S.g.cosmetics[item.id]=1;
+    if(item.kind==="theme"||item.kind==="effect"||item.kind==="badge") S.g.cosmetics[item.id]=1;
+  }
+  function buyShopItem(id){
+    var item=shopList().filter(function(x){return x.id===id;})[0]; if(!item) return;
+    if(item.kind!=="consumable"&&owned(item.id)){ toast10("Этот предмет уже есть в инвентаре."); return; }
+    if(!spendXP(item.cost,"shop")){ toast10("Недостаточно XP. Нужно "+item.cost+" XP."); return; }
+    ownShopItem(item); pushHistory("shop",item.name,"Покупка за "+item.cost+" XP");
+    save(); renderGame(); toast10("Покупка добавлена в инвентарь: "+item.name); haptic("success");
+  }
+  function equipItem(id){
+    var item=shopList().filter(function(x){return x.id===id;})[0]||SHOP_ITEMS.filter(function(x){return x.id===id;})[0]||RARE_ITEMS.filter(function(x){return x.id===id;})[0]||allSeasonItems().filter(function(x){return x.id===id;})[0];
+    if(!item||!owned(id)) return;
+    if(item.kind==="frame") S.g.equipped.frame=item.value;
+    else if(item.kind==="theme") S.g.equipped.theme=item.value;
+    else if(item.kind==="effect") S.g.equipped.effect=item.value;
+    else if(item.kind==="badge") S.g.equipped.badge=item.value;
+    else return;
+    pushHistory("equip",item.name,"Предмет применён"); save(); renderGame(); toast10("Применено: "+item.name);
+  }
+  function inventoryItems(){
+    var out=[]; SHOP_ITEMS.concat(RARE_ITEMS).concat(allSeasonItems()).forEach(function(i){
+      if(i.kind!=="consumable"&&owned(i.id)&&!out.some(function(x){return x.id===i.id;})) out.push(i);
+    });
+    return out;
+  }
+  var WEEK_THEMES=[
+    {id:"order",name:"Неделя порядка",desc:"Выполни 12 задач за неделю.",kind:"tasks",goal:12},
+    {id:"reading",name:"Неделя чтения",desc:"Отметь прочитанными 2 статьи за неделю.",kind:"reading",goal:2},
+    {id:"schedule",name:"Неделя расписания",desc:"Выполни 8 событий в расписании.",kind:"schedule",goal:8},
+    {id:"habits",name:"Неделя привычек",desc:"Сделай 8 отметок в испытаниях.",kind:"challenges",goal:8},
+    {id:"focus",name:"Неделя фокуса",desc:"Выполни 18 задач за неделю.",kind:"tasks",goal:18}
+  ];
+  function weeklyTheme(){ return WEEK_THEMES[((weekNumber(todayKey)%WEEK_THEMES.length)+WEEK_THEMES.length)%WEEK_THEMES.length]; }
+  function weeklyProgress(theme){
+    var start=weekStartKey(todayKey), val=0;
+    if(theme.kind==="tasks") Object.keys(store).forEach(function(k){if(k>=start&&k<=todayKey) val+=(store[k]||[]).filter(function(t){return t.d&&!t.pass;}).length;});
+    if(theme.kind==="schedule") Object.keys(S.sched||{}).forEach(function(k){if(k>=start&&k<=todayKey) val+=(S.sched[k]||[]).filter(function(e){return e.d;}).length;});
+    if(theme.kind==="challenges") Object.keys(chStore||{}).forEach(function(mk){
+      var items=(chStore[mk]&&chStore[mk].items)||[]; items.forEach(function(it){
+        Object.keys(it.done||{}).forEach(function(d){var k=mk+"-"+String(d).padStart(2,"0"); if(k>=start&&k<=todayKey&&it.done[d]) val++;});
+        Object.keys(it.vals||{}).forEach(function(d){var k=mk+"-"+String(d).padStart(2,"0"); if(k>=start&&k<=todayKey&&+it.vals[d]>0) val++;});
+      });
+    });
+    if(theme.kind==="reading"){
+      Object.keys(S.g.artRead||{}).forEach(function(id){var dt=new Date(+S.g.artRead[id]||0); if(!isNaN(dt.getTime())){var k=dkey(dt);if(k>=start&&k<=todayKey)val++;}});
+    }
+    return val;
+  }
+  function weeklyTrialProgress(){
+    var start=weekStartKey(todayKey), tasks=0, events=0, challenges=0;
+    Object.keys(store).forEach(function(k){if(k>=start&&k<=todayKey)tasks+=(store[k]||[]).filter(function(t){return t.d&&!t.pass;}).length;});
+    Object.keys(S.sched||{}).forEach(function(k){if(k>=start&&k<=todayKey)events+=(S.sched[k]||[]).filter(function(e){return e.d;}).length;});
+    Object.keys(chStore||{}).forEach(function(mk){(chStore[mk].items||[]).forEach(function(it){Object.keys(it.done||{}).forEach(function(d){var k=mk+"-"+String(d).padStart(2,"0");if(k>=start&&k<=todayKey&&it.done[d])challenges++;});Object.keys(it.vals||{}).forEach(function(d){var k=mk+"-"+String(d).padStart(2,"0");if(k>=start&&k<=todayKey&&+it.vals[d]>0)challenges++;});});});
+    return tasks+events+challenges;
+  }
+  function holidayForToday(){
+    var m=now.getMonth()+1,d=now.getDate(), all={
+      "1-1":["Новый год","Запиши одну цель, с которой хочешь начать год.",100],
+      "2-14":["День тёплых слов","Напиши кому-нибудь приятное сообщение.",80],
+      "3-1":["Первый день весны","Запланируй одно небольшое обновление для себя.",80],
+      "6-1":["Начало лета","Запиши одно впечатление, которое хочешь получить этим летом.",80],
+      "9-1":["Начало осени","Выбери одну привычку, которую хочешь вернуть.",80],
+      "10-31":["Осенний секрет","Выполни одну задачу, которую давно откладывал.",100],
+      "11-12":["День рождения Паши","Запиши одно желание на новый год жизни.",120],
+      "12-31":["Итоги года","Сохрани одно воспоминание об уходящем годе.",120]
+    };
+    return all[m+"-"+d]||null;
+  }
+  function claimHoliday(){
+    var ev=holidayForToday(); if(!ev) return;
+    var key=todayKey; if(S.g.holidayClaims[key]) return;
+    S.g.holidayClaims[key]=1; grantXP(ev[2],"holiday",ev[0]);
+    var id="holiday-"+key; S.g.cosmetics[id]=1; pushHistory("event",ev[0],"Праздничное задание выполнено");
+    save(); renderGame(); toast10("🎉 Праздничное задание выполнено! +"+ev[2]+" XP"); if(S.set.fx) burst(120,.45);
+  }
+  function useFreeze(){
+    if(!canUseFreeze()){ toast10("Заморозку можно применить к пропущенному вчерашнему дню, если серия ещё можно сохранить."); return; }
+    var y=addDays(todayKey,-1);
+    if(!confirm("Потратить одну заморозку серии на "+y+"? Она поможет сохранить активные серии.")) return;
+    S.g.inventory["streak-freeze"]=(+S.g.inventory["streak-freeze"]||0)-1;
+    S.g.freezeDates.push(y); pushHistory("use","Заморозка серии","Сохранён день "+y);
+    save(); renderGame(); toast10("🧊 Серия сохранена!"); haptic("success");
+  }
+
+  function addRewardForBranch(branch,slot){
+    if(branch==="visual"){
+      if(slot===1){S.g.cosmetics["branch-theme-aurora"]=1;S.g.equipped.theme="aurora";}
+      else{S.g.cosmetics["branch-frame-starlight"]=1;S.g.equipped.frame="starlight";}
+    }else{
+      if(slot===1) S.g.featureUnlocks.streakWidget=1;
+      else S.g.featureUnlocks.weeklyReview=1;
+    }
+    S.g.branchClaims[branch+slot]=1;
+    pushHistory("branch",branch==="visual"?"Визуальная ветвь":"Функциональная ветвь","Награда этапа "+slot);
+  }
+  function branchHTML(lv){
+    var first=S.g.branchChoice.first||"", second=S.g.branchChoice.second||"", h='<div class="b21-item"><b>🌿 Ветви развития</b><p>На 10 уровне выбери первый путь. На 30 уровне откроется второй — обе ветви можно пройти.</p>';
+    if(lv.L<10) h+='<span class="b21-pill">🔒 Откроется на уровне 10</span>';
+    else if(!first) h+='<div class="b21-choice"><button class="btn" data-pg="branch" data-value="visual">🎨 Визуальный путь</button><button class="btn" data-pg="branch" data-value="functional">🧰 Функциональный путь</button></div>';
+    else{
+      h+='<div class="b21-pill">Первый путь: '+(first==="visual"?"🎨 Визуальный":"🧰 Функциональный")+'</div>';
+      h+='<div class="b21-row"><span>Этап 1 · уровень 20</span>'+(lv.L>=20?(S.g.branchClaims[first+"1"]?'<b>✓ Получено</b>':'<button class="ico" data-pg="branch-reward" data-value="1">Забрать</button>'):'<span class="b21-muted">🔒 Уровень 20</span>')+'</div>';
+      if(lv.L<30) h+='<p class="b21-muted">Второй путь откроется на уровне 30.</p>';
+      else if(!second) h+='<div class="b21-choice"><button class="btn" data-pg="branch-second" data-value="visual" '+(first==="visual"?"disabled":"")+'>🎨 Открыть визуальный</button><button class="btn" data-pg="branch-second" data-value="functional" '+(first==="functional"?"disabled":"")+'>🧰 Открыть функциональный</button></div>';
+      else h+='<div class="b21-pill">Второй путь: '+(second==="visual"?"🎨 Визуальный":"🧰 Функциональный")+'</div>';
+      if(second) h+='<div class="b21-row"><span>Этап 2 · уровень 40</span>'+(lv.L>=40?(S.g.branchClaims[second+"2"]?'<b>✓ Получено</b>':'<button class="ico" data-pg="branch-reward" data-value="2">Забрать</button>'):'<span class="b21-muted">🔒 Уровень 40</span>')+'</div>';
+    }
+    return h+'</div>';
+  }
+  function choiceHTML(lv){
+    var h='<div class="b21-item"><b>🎁 Выбор награды</b><p>На уровне 25 выбери один из двух предметов. Второй можно получить позднее в магазине.</p>';
+    if(lv.L<25) h+='<span class="b21-pill">🔒 Откроется на уровне 25</span>';
+    else if(!S.g.choiceRewards.level25) h+='<div class="b21-choice"><button class="ico" data-pg="choice25" data-value="frame">🌠 Рамка «Звёздный свет»</button><button class="ico" data-pg="choice25" data-value="badge">☄️ Значок «Комета»</button></div>';
+    else h+='<span class="b21-pill">✓ Выбрано: '+(S.g.choiceRewards.level25==="frame"?"Рамка":"Значок")+'</span>';
+    return h+'</div>';
+  }
+  function renderStreaks(){
+    var m=streakMetrics(), labels={tasks:"Задачи",schedule:"Расписание",challenges:"Испытания",reading:"Чтение",activity:"Общая активность"};
+    var h='<div class="b21-streaks">';
+    Object.keys(labels).forEach(function(k){ h+='<div class="b21-streak"><b>🔥 '+m[k].current+'</b><span>'+labels[k]+'</span><small>Рекорд: '+m[k].best+' '+plural(m[k].best,"день","дня","дней")+'</small></div>'; });
+    h+='</div><div class="b21-row"><span>🧊 Заморозки в инвентаре: <b>'+(+S.g.inventory["streak-freeze"]||0)+'</b></span><button class="ico" data-pg="use-freeze" '+(canUseFreeze()?"":"disabled")+'>Использовать заморозку</button></div><p class="b21-muted">Пропущенный день не стирает личный рекорд. Заморозка один раз закрывает пробел во всех сериях.</p>';
+    return h;
+  }
+  function renderMilestones(lv){
+    var milestones=[3,5,8,10,15,20,25,30,40,50,60,75,100], h='<div class="b21-grid">';
+    milestones.forEach(function(n){
+      var unlocked=lv.L>=n, titles={3:"Первый стиль",5:"Профиль и статистика",8:"Градиент",10:"Выбор пути",15:"Виджет серий",20:"Награда ветви",25:"Выбор предмета",30:"Вторая ветвь",40:"Вторая награда",50:"Эффект звёзд",60:"Большой этап",75:"Редкая рамка",100:"Реликтовый рубеж"};
+      h+='<div class="b21-item '+(!unlocked?"b21-locked":"")+'"><span class="b21-pill">'+(unlocked?"✓ Открыт":"🔒 Уровень "+n)+'</span><b style="margin-top:6px">'+titles[n]+'</b><p>'+(n===100?"Особая награда за очень длинную прокачку.":"Новый этап развития Planer.")+'</p></div>';
+    });
+    return h+'</div>';
+  }
+  function renderShop(lv){
+    var bal=calcXP(), items=shopList(), h='<div class="b21-muted" style="margin-bottom:8px">Баланс магазина: <b>'+fmtFull(bal)+' XP</b>. Редкий предмет меняется по неделям; сезонная коллекция — по времени года.</div><div class="b21-shop">';
+    items.forEach(function(i){
+      var has=i.kind!=="consumable"&&owned(i.id), freeze=i.id==="streak-freeze", rare=String(i.id).indexOf("rare-")===0;
+      var count=freeze?(+S.g.inventory["streak-freeze"]||0):0;
+      var label=has?"Уже в коллекции":freeze?"Купить · "+i.cost+" XP":i.kind==="bundle"?"Купить набор · "+i.cost+" XP":"Купить · "+i.cost+" XP";
+      h+='<div class="b21-item '+(rare?"b21-rare":"")+'"><span style="font-size:1.65rem">'+i.emoji+'</span><b>'+esc(i.name)+'</b><p>'+esc(i.desc)+'</p>'+(rare?'<span class="b21-pill">Редкий предмет недели</span>':i.id.indexOf("season-")===0?'<span class="b21-pill">Сезонная коллекция · '+seasonInfo().name+'</span>':"")+'<button class="ico" data-pg="buy" data-id="'+i.id+'" '+(has?"disabled":"")+'>'+label+'</button>'+(freeze&&count?'<small class="b21-muted">В инвентаре: '+count+'</small>':"")+'</div>';
+    });
+    return h+'</div>';
+  }
+  function renderInventory(){
+    var inv=inventoryItems(), h='<div class="b21-row"><span>🧊 Заморозка серии</span><b>× '+(+S.g.inventory["streak-freeze"]||0)+'</b></div>';
+    if(!inv.length) h+='<p class="b21-muted">Пока нет косметических предметов. Их можно получать за уровни и покупать за XP.</p>';
+    else inv.forEach(function(i){
+      var equip=S.g.equipped, active=(i.kind==="frame"&&equip.frame===i.value)||(i.kind==="theme"&&equip.theme===i.value)||(i.kind==="effect"&&equip.effect===i.value)||(i.kind==="badge"&&equip.badge===i.value);
+      h+='<div class="b21-row"><span>'+i.emoji+' '+esc(i.name)+'</span>'+(i.kind==="bundle"?'<span class="b21-pill">Набор собран</span>':'<button class="ico" data-pg="equip" data-id="'+i.id+'">'+(active?"Применено":"Применить")+'</button>')+'</div>';
+    });
+    return h;
+  }
+  function renderRewardHistory(){
+    var h=S.g.rewardHistory.slice().reverse().slice(0,18);
+    if(!h.length) return '<p class="b21-muted">Награды и покупки будут появляться здесь.</p>';
+    return '<div class="b21-history">'+h.map(function(x){return '<div class="xrow"><span>'+new Date(x.at).toLocaleDateString("ru-RU",{day:"numeric",month:"short"})+' · '+esc(x.title)+(x.detail?' <small class="b21-muted">— '+esc(x.detail)+'</small>':'')+'</span><span class="b21-pill">'+esc(x.kind)+'</span></div>';}).join("")+'</div>';
+  }
+  function renderNotificationPrefs(){
+    var p=S.g.botPrefs;
+    return '<label class="chk"><input type="checkbox" data-bot-pref="weekly" '+(p.weekly?"checked":"")+'> Тематическая неделя</label>'
+      +'<label class="chk" style="margin-top:7px"><input type="checkbox" data-bot-pref="seasonal" '+(p.seasonal?"checked":"")+'> Сезонные события</label>'
+      +'<label class="chk" style="margin-top:7px"><input type="checkbox" data-bot-pref="holiday" '+(p.holiday?"checked":"")+'> Праздничные задания</label>'
+      +'<label class="chk" style="margin-top:7px"><input type="checkbox" data-bot-pref="level" '+(p.level?"checked":"")+'> Повышение уровня и награды</label>'
+      +'<label class="chk" style="margin-top:7px"><input type="checkbox" data-bot-pref="rare" '+(p.rare?"checked":"")+'> Редкие предметы и достижения</label>'
+      +'<button class="ico" style="margin-top:10px" data-pg="copy-bot-prefs">Скопировать настройки для бота</button>'
+      +'<p class="b21-notice">Выбор сохраняется в данных Planer. В текущем index.html нет адреса обработчика бота, который принимает эти настройки: для фактической отправки уведомлений потребуется подключить существующий бот к этим параметрам.</p>';
+  }
+  function renderSecrets(){
+    var found=Object.keys(S.g.hiddenAch||S.g.hiddenSecrets), all=5;
+    if(!found.length) return '<div class="b21-item b21-secret"><b>?????</b><p>Здесь хранятся скрытые достижения. Пока комната закрыта.</p><span class="b21-pill">🔒 Закрыто</span></div>';
+    var names={logo:"Необычная внимательность",keyboard:"Знающий код",night:"Ночной наблюдатель",century:"Секретный рубеж",season:"Хранитель сезона"};
+    var h='<div class="b21-item"><b>🗝 Комната секретов</b><p>Найдено '+found.length+' из '+all+' скрытых достижений. Условия остаются загадкой.</p><div class="b21-grid">';
+    found.forEach(function(id){h+='<div class="b21-pill">✦ '+esc(names[id]||"Неизвестная находка")+'</div>';});
+    for(var i=found.length;i<all;i++) h+='<div class="b21-pill">🔒 ???</div>';
+    if(found.length>=3&&!S.g.cosmetics["secret-avatar"]) h+='<button class="btn" data-pg="claim-secret-avatar">Забрать секретный аватар</button>';
+    h+='</div></div>'; return h;
+  }
+  function renderProgressionExtras(lv){
+    var theme=weeklyTheme(), wk=weekKey(todayKey), progress=weeklyProgress(theme), trial=weeklyTrialProgress(), holiday=holidayForToday();
+    var thClaimed=!!S.g.themeWeeks[wk], trialClaimed=!!S.g.trialClaims[wk], h='<section class="card b21-card"><div class="head"><h2>🏆 Система прогрессии</h2><span class="b21-pill">Уровень '+lv.L+'</span></div>';
+    h+='<details class="b21-details" open><summary>🔥 Серии и рекорды</summary><div class="b21-body">'+renderStreaks()+'</div></details>';
+    h+='<details class="b21-details"><summary>🌳 Дерево уровней и наград</summary><div class="b21-body">'+renderMilestones(lv)+branchHTML(lv)+choiceHTML(lv)+'</div></details>';
+    h+='<details class="b21-details"><summary>🛍 Магазин XP</summary><div class="b21-body">'+renderShop(lv)+(S.g.featureUnlocks.seasonalShop?'':'<div class="b21-item b21-locked" style="margin-top:9px"><b>🌷 Сезонная коллекция</b><p>Откроется после достижения 30 уровня и получения награды.</p><span class="b21-pill">🔒 Уровень 30</span></div>')+'</div></details>';
+    h+='<details class="b21-details"><summary>🎒 Инвентарь</summary><div class="b21-body">'+renderInventory()+'</div></details>';
+    h+='<details class="b21-details"><summary>📜 История наград</summary><div class="b21-body">'+renderRewardHistory()+'</div></details>';
+    h+='<details class="b21-details b21-week" open><summary>🗓 Тематическая неделя</summary><div class="b21-body"><b>'+esc(theme.name)+'</b><p class="b21-muted">'+esc(theme.desc)+'</p><div class="b21-meter"><i style="width:'+pct(Math.min(progress,theme.goal),theme.goal)+'%"></i></div><div class="b21-row"><span>'+Math.min(progress,theme.goal)+' / '+theme.goal+'</span>'+(thClaimed?'<b>✓ Получено</b>':progress>=theme.goal?'<button class="btn" data-pg="claim-week">Забрать +60 XP</button>':'<span class="b21-muted">+60 XP за выполнение</span>')+'</div><p class="b21-muted">Испытание недели: набери 25 единиц активности (задачи, события или отметки испытаний).</p><div class="b21-meter"><i style="width:'+pct(Math.min(trial,25),25)+'%"></i></div><div class="b21-row"><span>'+Math.min(trial,25)+' / 25</span>'+(trialClaimed?'<b>✓ Получено</b>':trial>=25?'<button class="btn" data-pg="claim-trial">Забрать +90 XP</button>':'<span class="b21-muted">+90 XP</span>')+'</div></div></details>';
+    h+='<details class="b21-details" '+(holiday?'open':'')+'><summary>🎉 Праздничные и ежегодные события</summary><div class="b21-body">';
+    if(holiday){ h+='<div class="b21-item"><span style="font-size:1.5rem">🎊</span><b>'+esc(holiday[0])+'</b><p>'+esc(holiday[1])+'</p>'+(S.g.holidayClaims[todayKey]?'<span class="b21-pill">✓ Выполнено в этом году</span>':'<button class="btn" data-pg="claim-holiday">Выполнить · +'+holiday[2]+' XP</button>')+'</div>'; }
+    else h+='<p class="b21-muted">Праздничные задания появляются в выбранные календарные дни. Следи за сезонными коллекциями и ежегодными событиями.</p>';
+    h+='<div class="b21-pill" style="margin-top:9px">Текущий сезон: '+seasonInfo().emoji+' '+seasonInfo().name+'</div></div></details>';
+    h+='<details class="b21-details"><summary>🔔 Предпочтения уведомлений бота</summary><div class="b21-body">'+renderNotificationPrefs()+'</div></details>';
+    if(foundSecretCount()) h+='<details class="b21-details" open><summary>🗝 Комната секретов</summary><div class="b21-body">'+renderSecrets()+'</div></details>';
+    else h+='<details class="b21-details"><summary>🗝 ???</summary><div class="b21-body">'+renderSecrets()+'</div></details>';
+    h+='</section>';
+    return h;
+  }
+  function foundSecretCount(){ return Object.keys(S.g.hiddenSecrets||{}).length; }
+
+  function applyProfileCosmetics(box){
+    var av=box&&box.querySelector(".profile-avatar"), card=box&&box.querySelector(".profile-card"), name=box&&box.querySelector(".profile-main h3");
+    if(!av||!card) return;
+    var eq=S.g.equipped||{};
+    if(eq.frame) av.classList.add("b21-frame-"+eq.frame);
+    if(eq.effect==="stars") av.classList.add("b21-effect-stars");
+    if(eq.theme) card.classList.add("b21-profile-theme-"+eq.theme);
+    if(eq.badge&&name){ var badge=document.createElement("span"); badge.className="b21-profile-badge"; var glyphs={comet:"☄️",phoenix:"🔥",leaf:"🍃",snowflake:"❄️",flower:"🌸",sun:"☀️",explorer:"🧭"}; badge.textContent=glyphs[eq.badge]||"🧭"; name.appendChild(badge); }
+  }
+  function addFeatureStatus(box){
+    if(!box) return;
+    if(S.g.featureUnlocks.streakWidget){ var card=document.createElement("section"); card.className="card"; card.innerHTML='<div class="head"><h2>🔥 Дополнительный виджет серий</h2><span class="b21-pill">Открыто</span></div>'+renderStreaks(); box.appendChild(card); }
+    if(S.g.featureUnlocks.weeklyReview){ var card2=document.createElement("section"); card2.className="card"; card2.innerHTML='<div class="head"><h2>📊 Итог недели</h2></div><p class="b21-muted">Задач выполнено: '+Object.keys(store).filter(function(k){return k>=weekStartKey(todayKey)&&k<=todayKey;}).reduce(function(n,k){return n+(store[k]||[]).filter(function(t){return t.d&&!t.pass;}).length;},0)+'. Продолжай в своём темпе.</p>'; box.appendChild(card2); }
+  }
+  var _renderGameB20=renderGame;
+  renderGame=function(){
+    ensureB21();
+    var lv=levelInfo(); checkLevel(lv);
+    _renderGameB20();
+    var box=$("gameBox"); if(!box) return;
+    var levelCard=box.querySelector(".lvbig");
+    if(levelCard){ var c=levelCard.closest(".card"), bal=c&&c.querySelector(".head .gmuted"); if(bal) bal.textContent="Баланс: "+fmtFull(lv.balance)+" XP · Всего заработано: "+fmtFull(lv.xp)+" XP"; }
+    applyProfileCosmetics(box);
+    box.insertAdjacentHTML("beforeend",renderProgressionExtras(levelInfo()));
+    addFeatureStatus(box);
+  };
+
+  /* Дополнительные достижения: длинные дистанции, чтение, исследование разделов, редкие и платиновые уровни. */
+  ["Чтение","Исследователь","Редкие достижения","Платиновые"].forEach(function(x){if(SECS.indexOf(x)<0)SECS.push(x);});
+  defAch("Задачи","done","✅",function(n){return "Выполнить "+n+" задач";},[[5000,"Пять тысяч дел"],[10000,"Десять тысяч дел"]]);
+  defAch("Дни и серии","streak","🔥",function(n){return "Сохранять серию активности "+DN(n)+" подряд";},[[500,"Пятьсот дней в ритме"],[730,"Два года в ритме"],[1000,"Тысяча дней"],[1500,"Полторы тысячи дней"]]);
+  defAch("Чтение","readArticles","📚",function(n){return "Прочитать "+n+" статей";},[[25,"Читатель"],[50,"Любознательный"],[100,"Библиотека"],[250,"Книжный марафон"],[500,"Эрудит"],[1000,"Хранитель знаний"],[2000,"Легенда чтения"]]);
+  defAch("Исследователь","research","🧭",function(n){return "Посетить все основные разделы Planer";},[[7,"Исследователь Planer"]]);
+  defAch("Редкие достижения","rareDay","⚡",function(n){return "Выполнить "+n+" задач за один день";},[[15,"Турбо-день"],[25,"День рекордов"],[40,"Невероятный рывок"]]);
+  defAch("Платиновые","done","💠",function(n){return "Выполнить "+n+" задач";},[[25000,"Платиновый мастер"],[50000,"Абсолютный мастер"]]);
+  defAch("Платиновые","streak","💠",function(n){return "Сохранять серию "+DN(n)+" подряд";},[[730,"Два года без разрыва"],[1000,"Тысяча дней мастерства"]]);
+  defAch("Платиновые","readArticles","💠",function(n){return "Прочитать "+n+" статей";},[[1000,"Платиновый читатель"],[2000,"Архивариус"]]);
+  A.forEach(function(a){
+    if(a.s==="Редкие достижения") a.rarity="rare";
+    if(a.s==="Платиновые") a.rarity="platinum";
+  });
+  var _achStatsB20=achStats;
+  achStats=function(){
+    var st=_achStatsB20(), doneByDay={}, maxDay=0;
+    Object.keys(store||{}).forEach(function(k){ var n=(store[k]||[]).filter(function(t){return t.d&&!t.pass;}).length; doneByDay[k]=n; if(n>maxDay) maxDay=n; });
+    st.readArticles=Object.keys(Object.assign({},S.g.art||{},S.g.artRead||{})).length;
+    st.research=Object.keys(S.g.sectionsVisited||{}).filter(function(k){return S.g.sectionsVisited[k];}).length;
+    st.rareDay=maxDay;
+    st.level=levelInfo().L;
+    return st;
+  };
+  var ACH_SERIES=[
+    {id:"planner",name:"Путь планировщика",desc:"100 задач · 30-дневная серия · 30 запланированных дней",need:["done100","streak30","planned30"],xp:180},
+    {id:"reader",name:"Путь читателя",desc:"25 и 100 прочитанных статей",need:["readArticles25","readArticles100"],xp:180},
+    {id:"explorer",name:"Путь исследователя",desc:"Все разделы и самостоятельная настройка приложения",need:["research7","sAccent1","sBg1"],xp:160}
+  ];
+  function checkAchievementSeries(){
+    ensureB21(); var fresh=[];
+    ACH_SERIES.forEach(function(s){
+      if(S.g.achievementSeries[s.id]) return;
+      if(s.need.every(function(id){return !!(S.ach&&S.ach[id]);})){
+        S.g.achievementSeries[s.id]=todayKey; grantXP(s.xp,"series",s.name); fresh.push(s.name);
+      }
+    });
+    return fresh;
+  }
+  var _checkAchB20=checkAch;
+  checkAch=function(silent){
+    ensureB21(); var before={}; Object.keys(S.ach||{}).forEach(function(k){before[k]=1;});
+    var st=_checkAchB20(silent), fresh=[];
+    A.forEach(function(a){
+      if(!before[a.id]&&S.ach&&S.ach[a.id]&&a.rarity&&!S.g.rareAwarded[a.id]){
+        S.g.rareAwarded[a.id]=1;
+        var amount=a.rarity==="platinum"?300:100;
+        grantXP(amount,"rare",a.n); fresh.push(a.n);
+      }
+    });
+    var series=checkAchievementSeries();
+    if(fresh.length||series.length){save(); if(!silent) toast10("🏅 Особая награда: "+fresh.concat(series).slice(0,2).join(", "));}
+    return st;
+  };
+  function renderAchievementExtras(){
+    var box=$("b21AchExtra"); if(!box) return;
+    var hiddenN=Object.keys(S.g.hiddenSecrets||{}).length;
+    var h='<section class="card"><div class="head"><h2>🏅 Серии достижений</h2></div><div class="b21-grid">';
+    ACH_SERIES.forEach(function(s){var count=s.need.filter(function(id){return !!(S.ach&&S.ach[id]);}).length, done=!!S.g.achievementSeries[s.id]; h+='<div class="b21-item"><b>'+esc(s.name)+'</b><p>'+esc(s.desc)+'</p><div class="b21-meter"><i style="width:'+pct(count,s.need.length)+'%"></i></div><span class="b21-pill">'+(done?"✓ Получено":""+count+" / "+s.need.length)+'</span></div>';});
+    h+='</div><div class="b21-row" style="margin-top:12px"><span>Секреты</span><span class="b21-pill">'+(hiddenN?hiddenN+" найдено":"???")+'</span></div><p class="b21-muted">Редкие и скрытые достижения могут открываться неожиданно. Условия заранее не раскрываются.</p></section>';
+    box.innerHTML=h;
+    document.querySelectorAll("#achList .ach").forEach(function(el){
+      var txt=el.textContent||"";
+      var a=A.filter(function(x){return txt.indexOf(x.n)>=0;})[0];
+      if(a&&a.rarity) el.classList.add("b21-rare");
+    });
+  }
+  var extraAch=document.createElement("div"); extraAch.id="b21AchExtra"; $("achList").insertAdjacentElement("afterend",extraAch);
+  var _renderAchB20=renderAch;
+  renderAch=function(){ _renderAchB20(); renderAchievementExtras(); };
+
+  function discoverSecret(id,title,reward){
+    ensureB21(); if(S.g.hiddenSecrets[id]) return;
+    S.g.hiddenSecrets[id]=Date.now();
+    S.g.hiddenAch[id]=todayKey;
+    pushHistory("secret",title||"Секрет найден","Неизвестная находка");
+    if(reward) grantXP(reward,"rare",title||"Секретная находка"); else { save(); }
+    toast10("✨ Ты нашёл кое-что необычное…"); if(S.set.fx) burst(90,.4);
+    if(Object.keys(S.g.hiddenSecrets).length>=3&&!S.g.cosmetics["secret-avatar"]) S.g.cosmetics["secret-avatar"]=1;
+    save();
+  }
+  /* Секретные условия намеренно не отображаются в интерфейсе. */
+  var helloClicks=[], secretKeys="";
+  var titleEl=$("hello");
+  if(titleEl) titleEl.addEventListener("click",function(){
+    var n=Date.now(); helloClicks=helloClicks.filter(function(t){return n-t<4500;}); helloClicks.push(n);
+    if(helloClicks.length>=7){helloClicks=[];discoverSecret("logo","Секрет внимательности",90);renderGame();}
+  });
+  document.addEventListener("keydown",function(e){
+    var t=e.target; if(t&&(t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.isContentEditable)) return;
+    secretKeys=(secretKeys+String(e.key||"").toLowerCase()).slice(-6);
+    if(secretKeys==="planer"){secretKeys="";discoverSecret("keyboard","Скрытая комбинация",120);renderGame();}
+  });
+  if(now.getHours()>=23||now.getHours()<4){ document.body.classList.add("b21-night"); if(!S.g.hiddenSecrets.night){discoverSecret("night","Ночной наблюдатель",50);} }
+  var _renderGameForSecrets=renderGame;
+  renderGame=function(){
+    _renderGameForSecrets();
+    var room=$("gameBox"); if(room){ var s=room.querySelector(".b21-secret"); if(s&&foundSecretCount()) s.classList.add("b21-secret-glow"); }
+  };
+
+  /* Переключение вкладок запоминает, что пользователь исследовал каждый раздел. */
+  var _showTabB20=showTab;
+  showTab=function(name){
+    ensureB21();
+    if(!S.g.sectionsVisited[name]){ S.g.sectionsVisited[name]=1; persist(); touch(); }
+    _showTabB20(name);
+  };
+  /* Старые пользователи уже видели вкладки, не заставляем их проходить весь интерфейс заново: учитываем стартовую страницу. */
+  if(!Object.keys(S.g.sectionsVisited).length) S.g.sectionsVisited.plan=1;
+
+  function claimWeekly(){
+    var theme=weeklyTheme(), wk=weekKey(todayKey);
+    if(S.g.themeWeeks[wk]||weeklyProgress(theme)<theme.goal) return;
+    S.g.themeWeeks[wk]=1; grantXP(60,"theme",theme.name); pushHistory("weekly",theme.name,"Тематическая неделя пройдена"); save(); renderGame(); toast10("🗓 Тематическая неделя пройдена! +60 XP");
+  }
+  function claimTrial(){
+    var wk=weekKey(todayKey); if(S.g.trialClaims[wk]||weeklyTrialProgress()<25) return;
+    S.g.trialClaims[wk]=1; grantXP(90,"trial","Испытание недели");
+    S.g.inventory["streak-freeze"]=(+S.g.inventory["streak-freeze"]||0)+1;
+    pushHistory("trial","Испытание недели","Награда: +90 XP и заморозка серии"); save(); renderGame(); toast10("🏁 Испытание недели выполнено! +90 XP и заморозка серии");
+  }
+  function copyBotPrefs(){
+    var txt=JSON.stringify({source:"Planer Build 21",preferences:S.g.botPrefs},null,2);
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function(){toast10("Настройки уведомлений скопированы.");}).catch(function(){downloadBotPrefs(txt);});
+    else downloadBotPrefs(txt);
+  }
+  function downloadBotPrefs(txt){
+    var a=document.createElement("a"), u=URL.createObjectURL(new Blob([txt],{type:"application/json"})); a.href=u; a.download="planer-bot-notifications.json"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(u);},1000); toast10("Файл настроек для бота сохранён.");
+  }
+  function handleProgressionClick(e){
+    var b=e.target.closest("[data-pg]"); if(!b) return;
+    var a=b.dataset.pg, id=b.dataset.id, val=b.dataset.value;
+    if(a==="buy") buyShopItem(id);
+    else if(a==="equip") equipItem(id);
+    else if(a==="use-freeze") useFreeze();
+    else if(a==="branch"){
+      if(levelInfo().L<10||S.g.branchChoice.first) return;
+      S.g.branchChoice.first=val; pushHistory("branch-choice","Выбран путь",val==="visual"?"Визуальный":"Функциональный"); save(); renderGame();
+    }else if(a==="branch-second"){
+      if(levelInfo().L<30||S.g.branchChoice.second||val===S.g.branchChoice.first) return;
+      S.g.branchChoice.second=val; pushHistory("branch-choice","Открыта вторая ветвь",val); save(); renderGame();
+    }else if(a==="branch-reward"){
+      var slot=+val, branch=slot===1?S.g.branchChoice.first:S.g.branchChoice.second;
+      if(!branch||levelInfo().L<(slot===1?20:40)||S.g.branchClaims[branch+slot]) return;
+      addRewardForBranch(branch,slot); save(); renderGame(); toast10("🌿 Награда ветви получена!");
+    }else if(a==="choice25"){
+      if(levelInfo().L<25||S.g.choiceRewards.level25) return;
+      S.g.choiceRewards.level25=val;
+      if(val==="frame"){S.g.cosmetics["rare-frame-starlight"]=1;S.g.equipped.frame="starlight";}
+      else{S.g.cosmetics["badge-comet"]=1;S.g.equipped.badge="comet";}
+      pushHistory("choice","Выбор награды 25 уровня",val); save(); renderGame(); toast10("🎁 Выбор награды сохранён!");
+    }else if(a==="claim-week") claimWeekly();
+    else if(a==="claim-trial") claimTrial();
+    else if(a==="claim-holiday") claimHoliday();
+    else if(a==="claim-secret-avatar"){
+      if(foundSecretCount()<3) return;
+      S.g.cosmetics["secret-avatar"]=1; pushHistory("secret","Секретный аватар","Особая косметическая награда"); save(); renderGame(); toast10("🗝 Секретный аватар добавлен в инвентарь.");
+    }else if(a==="copy-bot-prefs") copyBotPrefs();
+  }
+  $("gameBox").addEventListener("click",handleProgressionClick);
+  $("gameBox").addEventListener("change",function(e){
+    var k=e.target&&e.target.dataset&&e.target.dataset.botPref; if(!k) return;
+    ensureB21(); S.g.botPrefs[k]=e.target.checked?1:0; save(); toast10("Предпочтение уведомлений сохранено.");
+  });
+
+  /* Праздничные события, сезонные предметы и годовые достижения. */
+  var _afterToggleB20=afterToggle;
+  afterToggle=function(wasAll){ _afterToggleB20(wasAll); };
+  var _levelStart=levelInfo();
+  checkLevel(_levelStart);
+  if(foundSecretCount()>=3) S.g.cosmetics["secret-avatar"]=1;
+  var _oldRenderAll=renderAll;
+  renderAll=function(){ ensureB21(); _oldRenderAll(); };
+  /* Мягкая серия: лучший рекорд остаётся в истории даже после сброса текущей. */
+  var _oldCheckAchRender=checkAch;
+  checkAch=function(silent){ var r=_oldCheckAchRender(silent); try{checkAchievementSeries();}catch(e){} return r; };
+
+  /* Редкий предмет недели не исчезает после покупки — он остаётся в коллекции. */
+  var _renderGameFinal=renderGame;
+  renderGame=function(){
+    ensureB21();
+    _renderGameFinal();
+    var box=$("gameBox"); if(box){
+      if(S.g.equipped.frame==="relic"){var av=box.querySelector(".profile-avatar");if(av)av.classList.add("b21-secret-glow");}
+      if(S.g.cosmetics["secret-avatar"]){var p=box.querySelector(".profile-main h3");if(p&&!p.querySelector(".b21-secret-avatar")){var b=document.createElement("span");b.className="b21-profile-badge b21-secret-avatar";b.textContent="🗝";b.title="Секретная коллекция";p.appendChild(b);}}
+    }
+  };
+
+  /* Секретный уровень и сезонный секрет проверяются после полной инициализации статей. */
+  setTimeout(function(){
+    try{
+      ensureB21();
+      if(levelInfo().L>=100) discoverSecret("century","Секретный рубеж",180);
+      var month=now.getMonth();
+      if((month===2||month===8)&&!S.g.hiddenSecrets.season){discoverSecret("season","Хранитель сезона",70);}
+      if(foundSecretCount()>=3) S.g.cosmetics["secret-avatar"]=1;
+      if(!$ ("pageAch").hidden) renderAch();
+    }catch(e){}
+  },900);
+
 })();
 
 })();
