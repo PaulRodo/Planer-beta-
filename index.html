@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- Планер задач · сборка 21 -->
+<!-- Планер задач · сборка 22 -->
 <html lang="ru">
 <head>
 <script>
 /* Самообновление. Номер сборки ОДИН и тот же здесь и в version.json — при каждом релизе поднимай оба.
    Если на сайте сборка новее, страница перезагружается с ?v=N и обходит кэш Telegram.
    Проверка идёт при запуске и каждый раз, когда мини-апп снова открывают из свёрнутого состояния. */
-window.APP_BUILD=21;
+window.APP_BUILD=22;
 (function(){
   function check(){ try{
     fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
@@ -144,6 +144,18 @@ body,.card,.stat,.fld,.add input,.tab{transition:background-color .3s,border-col
 .sync{background:var(--soft);border:1px solid var(--border);border-radius:19px;padding:8px 12px;font-size:.85rem;max-width:150px;min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sync:disabled{color:var(--muted);cursor:default}
 .backup{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:8px;font-size:.85rem}
+.syncdiag{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--soft);font-size:.84rem}
+.syncdiag summary{cursor:pointer;font-weight:700;color:var(--text);list-style-position:inside}
+.syncdiag-grid{display:grid;grid-template-columns:minmax(110px,.8fr) minmax(0,1.5fr);gap:6px 12px;margin-top:10px}
+.syncdiag-grid span:nth-child(odd){color:var(--muted)}
+.syncdiag-grid span:nth-child(even){overflow-wrap:anywhere}
+.syncdiag-status{font-weight:700}
+.syncdiag-status[data-state="ok"]{color:var(--ok)}
+.syncdiag-status[data-state="error"]{color:#c0392b}
+.syncdiag-status[data-state="warning"]{color:var(--warn)}
+.syncdiag-hint{margin:9px 0 0;color:var(--muted);line-height:1.45}
+@media(max-width:420px){.syncdiag-grid{grid-template-columns:1fr;gap:2px}.syncdiag-grid span:nth-child(even){margin-bottom:7px}}
+
 
 /* ---------- Поиск ---------- */
 .searchbar{margin:0 0 14px}
@@ -893,8 +905,22 @@ button:active{transform:scale(.97)}
           <input type="file" id="importFile" accept=".json,application/json" hidden>
         </div>
         <p class="muted" id="cloudNote" hidden style="color:var(--muted);font-size:.85rem;margin:0">Данные автоматически хранятся в облаке Telegram.</p>
+        <details class="syncdiag" id="syncDiagPanel" hidden>
+          <summary>Диагностика синхронизации</summary>
+          <div class="syncdiag-grid">
+            <span>Состояние</span><span class="syncdiag-status" id="syncDiagState">Ожидание</span>
+            <span>Этап</span><span id="syncDiagStage">—</span>
+            <span>Ответ Telegram</span><span id="syncDiagError">Ошибок пока нет</span>
+            <span>Облачные записи</span><span id="syncDiagKeys">Ещё не проверено · лимит 1024</span>
+            <span>Последняя попытка</span><span id="syncDiagAttempt">—</span>
+            <span>Последняя успешная</span><span id="syncDiagSuccess">Пока не зафиксирована</span>
+          </div>
+          <p class="syncdiag-hint" id="syncDiagHint">Диагностика показывает этап, на котором прервалась операция. Сам отчёт не содержит содержимое задач и заметок.</p>
+          <div class="backup"><button class="link" id="copySyncDiagBtn" type="button">Скопировать отчёт</button></div>
+        </details>
         <div class="backup" id="safety">
-          <button class="link" id="syncNowBtn" hidden>Синхронизировать сейчас</button>
+          <button class="link" id="syncNowBtn" hidden>Повторить синхронизацию</button>
+          <button class="link" id="downloadCloudBackupBtn" hidden>Скачать резервную копию</button>
           <button class="link" id="restoreBtn" hidden>Восстановить из автокопии</button>
         </div>
         <div class="backup" id="restoreBox" hidden>
@@ -1007,6 +1033,51 @@ var BAKIDX="planner:bakidx", BAKMAX=5, MTKEY="planner:mt", BASEKEY="planner:base
 var persistFail=false, autoRestored=false, bakTimer=null;
 var tgCloud=false, pushTimer=null, lastPushed={}, cloudReady=false, syncing=false, syncAgain=false, retryN=0, retryT=null;
 var lastMeta="", lastSyncAt=0, lastFull=0, hiddenAt=0, oversize=false;
+/* Диагностика синхронизации хранится отдельно от пользовательских данных и не участвует в слиянии. */
+var SYNC_DIAG_KEY="planner:syncdiag:v1";
+var syncDiag=(function(){ try{ var v=JSON.parse(localStorage.getItem(SYNC_DIAG_KEY)||"null"); if(v&&typeof v==="object") return Object.assign({status:"idle",stage:"",errorCode:"",errorText:"",keyCount:null,keyCountAt:0,lastAttempt:0,lastSuccess:0,attempts:0,oversize:false},v); }catch(e){} return {status:"idle",stage:"",errorCode:"",errorText:"",keyCount:null,keyCountAt:0,lastAttempt:0,lastSuccess:0,attempts:0,oversize:false}; })();
+lastSyncAt=+syncDiag.lastSuccess||0;
+function saveSyncDiag(){ try{ localStorage.setItem(SYNC_DIAG_KEY,JSON.stringify(syncDiag)); }catch(e){} }
+function diagTime(t){ return t?new Date(t).toLocaleString("ru-RU",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—"; }
+function renderSyncDiag(){
+  var panel=$("syncDiagPanel"); if(!panel) return;
+  var state=$("syncDiagState"), labels={idle:"Ожидание",busy:"Выполняется",ok:"Синхронизация успешна",error:"Ошибка синхронизации",warning:"Синхронизировано с предупреждением"};
+  state.textContent=labels[syncDiag.status]||"Состояние неизвестно"; state.setAttribute("data-state",syncDiag.status||"idle");
+  $("syncDiagStage").textContent=syncDiag.stage||"—";
+  var err="Ошибок пока нет";
+  if(syncDiag.errorCode||syncDiag.errorText) err=(syncDiag.errorCode?"Код: "+syncDiag.errorCode+" · ":"")+(syncDiag.errorText||"");
+  $("syncDiagError").textContent=err;
+  var kc=syncDiag.keyCount;
+  $("syncDiagKeys").textContent=(kc==null?"Ещё не проверено":kc+" / 1024 ("+Math.round(kc/1024*100)+"%)")+(syncDiag.keyCountAt?" · проверено "+diagTime(syncDiag.keyCountAt):"");
+  $("syncDiagAttempt").textContent=diagTime(syncDiag.lastAttempt);
+  $("syncDiagSuccess").textContent=diagTime(syncDiag.lastSuccess);
+  var hint="Отчёт содержит только технические сведения и не включает тексты задач или заметок.";
+  if(syncDiag.status==="error") hint="Локальные данные остаются на устройстве. Не восстанавливайте автокопию только из-за ошибки связи. Проверьте этап и ответ Telegram ниже.";
+  if(syncDiag.status==="warning"&&syncDiag.oversize) hint="Часть данных не помещается в допустимый размер облачной записи. Локальная копия остаётся на устройстве; синхронизация требует отдельного разбора.";
+  if(kc!=null&&kc>=820) hint+=" Внимание: облако приближается к лимиту 1024 записи.";
+  $("syncDiagHint").textContent=hint;
+}
+function diagStart(why){
+  syncDiag.status="busy"; syncDiag.stage="Подготовка синхронизации"+(why?" ("+why+")":""); syncDiag.errorCode=""; syncDiag.errorText=""; syncDiag.lastAttempt=Date.now(); syncDiag.attempts=(+syncDiag.attempts||0)+1; syncDiag.oversize=false; saveSyncDiag(); renderSyncDiag();
+}
+function diagStage(stage){ syncDiag.status="busy"; syncDiag.stage=stage||"Обращение к облаку"; saveSyncDiag(); renderSyncDiag(); }
+function diagErrorInfo(e){
+  if(e==="timeout"||e==="TIMEOUT") return {code:"TIMEOUT_20000",text:"Telegram не ответил за 20 секунд."};
+  if(e&&typeof e==="object"){
+    var code=e.code||e.type||e.name||"";
+    var msg=e.message||e.description||e.error||"Ответ получен в виде объекта ошибки.";
+    try{ if(!e.message&&!e.description&&!e.error) msg=JSON.stringify(e); }catch(_){ }
+    return {code:String(code||"TELEGRAM_ERROR"),text:String(msg)};
+  }
+  var raw=String(e==null?"Неизвестная ошибка":e);
+  var isCode=/^[A-Z][A-Z0-9_]{2,80}$/.test(raw);
+  return {code:isCode?raw:"TELEGRAM_ERROR",text:isCode?"Telegram вернул этот код ошибки.":raw};
+}
+function diagFail(stage,e){ var x=diagErrorInfo(e); syncDiag.status="error"; syncDiag.stage=stage||syncDiag.stage||"Неизвестный этап"; syncDiag.errorCode=x.code; syncDiag.errorText=x.text; saveSyncDiag(); renderSyncDiag(); }
+function diagSuccess(){
+  syncDiag.status=oversize?"warning":"ok"; syncDiag.stage=oversize?"Проверка размера облачных записей":"Синхронизация завершена"; syncDiag.errorCode=oversize?"VALUE_TOO_LARGE":""; syncDiag.errorText=oversize?"Одна или несколько записей не были отправлены из-за ограничения размера.":""; syncDiag.lastSuccess=Date.now(); syncDiag.keyCount=Object.keys(lastPushed).length; syncDiag.keyCountAt=syncDiag.lastSuccess; syncDiag.oversize=!!oversize; lastSyncAt=syncDiag.lastSuccess; saveSyncDiag(); renderSyncDiag();
+}
+function syncDiagReport(){ return ["Planer build 22","Состояние: "+(syncDiag.status||"—"),"Этап: "+(syncDiag.stage||"—"),"Код: "+(syncDiag.errorCode||"—"),"Ответ: "+(syncDiag.errorText||"—"),"Ключи облака: "+(syncDiag.keyCount==null?"неизвестно":syncDiag.keyCount+" / 1024"),"Последняя попытка: "+diagTime(syncDiag.lastAttempt),"Последняя успешная синхронизация: "+diagTime(syncDiag.lastSuccess),"Попыток: "+(+syncDiag.attempts||0)].join("\n"); }
 
 function h53(str){ var h1=0xdeadbeef, h2=0x41c6ce57, i, c;
   for(i=0;i<str.length;i++){ c=str.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); }
@@ -1057,7 +1128,8 @@ function stamp(){
 }
 function rehash(){ var cur=records(), k; for(k in cur) MT.h[k]=h53(cur[k]); for(k in MT.h){ if(!(k in cur)) delete MT.h[k]; } saveMT(); }
 function hasLocalData(){
-  return Object.keys(store).some(function(k){ return store[k]&&store[k].length; })||Object.keys(chStore).length>0||S.rec.length>0||Object.keys(S.notes).length>0||Object.keys(S.sched).length>0;
+  var g=S.g||{};
+  return Object.keys(store).some(function(k){ return store[k]&&store[k].length; })||Object.keys(chStore).length>0||S.rec.length>0||Object.keys(S.notes).length>0||Object.keys(S.sched).length>0||S.tpl.length>0||!!(S.xl&&Object.keys(S.xl).length)||!!(S.ach&&Object.keys(S.ach).length)||!!((g.own&&g.own.length)||(g.unlocks&&Object.keys(g.unlocks).length)||g.profileName||g.avatar||g.lv||g.chn||g.qn||(g.birthdayLetters&&g.birthdayLetters.length)||(g.yearReflections&&Object.keys(g.yearReflections).length)||(g.inventory&&Object.keys(g.inventory).length));
 }
 function countTasks(){ var n=0; Object.keys(store).forEach(function(k){ n+=(store[k]||[]).length; }); return n; }
 
@@ -3061,9 +3133,11 @@ function mergeRemote(R){
   return changed;
 }
 
-function cg(fn,cb){
-  var fin=false, t=setTimeout(function(){ if(!fin){ fin=true; cb("timeout"); } },20000);
-  fn(function(e,r){ if(fin) return; fin=true; clearTimeout(t); cb(e,r); });
+function cg(fn,cb,stage){
+  var fin=false, t=setTimeout(function(){ finish("timeout"); },20000);
+  function finish(e,r){ if(fin) return; fin=true; clearTimeout(t); if(e) diagFail(stage,e); cb(e,r); }
+  if(stage) diagStage(stage);
+  try{ fn(function(e,r){ finish(e,r); }); }catch(e){ finish(e); }
 }
 function pool(tasks,limit,cb){
   var i=0, act=0, bad=false, fin=false;
@@ -3077,46 +3151,48 @@ function pool(tasks,limit,cb){
 function cloudGet(cb){
   var cs=TG.CloudStorage;
   cg(function(f){ cs.getKeys(f); },function(e,keys){
-    if(e||!Array.isArray(keys)){ cb(e||"keys"); return; }
+    if(e||!Array.isArray(keys)){ if(!e) diagFail("Получение списка ключей облака","CLOUD_STORAGE_INVALID_KEYS_RESPONSE"); cb(e||"CLOUD_STORAGE_INVALID_KEYS_RESPONSE"); return; }
+    syncDiag.keyCount=keys.length; syncDiag.keyCountAt=Date.now(); saveSyncDiag(); renderSyncDiag();
     var vals={}, i=0;
     (function next(){
       if(i>=keys.length){ cb(null,vals); return; }
-      var part=keys.slice(i,i+60); i+=60;
-      cg(function(f){ cs.getItems(part,f); },function(e2,r){ if(e2||!r){ cb(e2||"items"); return; } Object.keys(r).forEach(function(k){ vals[k]=r[k]; }); next(); });
+      var start=i, part=keys.slice(i,i+60); i+=60;
+      cg(function(f){ cs.getItems(part,f); },function(e2,r){ if(e2||!r){ if(!e2) diagFail("Чтение облачных записей","CLOUD_STORAGE_INVALID_ITEMS_RESPONSE"); cb(e2||"CLOUD_STORAGE_INVALID_ITEMS_RESPONSE"); return; } Object.keys(r).forEach(function(k){ vals[k]=r[k]; }); next(); },"Чтение облачных записей "+Math.min(i,keys.length)+" из "+keys.length);
     })();
-  });
+  },"Получение списка ключей облака");
 }
 function pushDiff(done){
   var snap=records(), cs=TG.CloudStorage, ch=tgChunks(), mf=manifestsOut(), k, todo=[], big=false;
   for(k in mf) ch[k]=mf[k];
-  for(k in ch){ if(ch[k].length>4096){ big=true; delete ch[k]; } }
-  oversize=big;
+  var oversizeKeys=[];
+  for(k in ch){ if(ch[k].length>4096){ big=true; oversizeKeys.push(k); delete ch[k]; } }
+  oversize=big; syncDiag.oversize=big; syncDiag.oversizeKeys=oversizeKeys;
   for(k in ch) if(lastPushed[k]!==ch[k]) todo.push(k);
   var gone=Object.keys(lastPushed).filter(function(x){ return !(x in ch)&&KNOWNKEY.test(x); });
   if(!todo.length&&!gone.length){ done(true,snap); return; }
-  var wr=todo.map(function(kk){ return function(cb){ cg(function(f){ cs.setItem(kk,ch[kk],f); },function(e){ if(!e) lastPushed[kk]=ch[kk]; cb(e); }); }; });
+  var wr=todo.map(function(kk){ return function(cb){ cg(function(f){ cs.setItem(kk,ch[kk],f); },function(e,stored){ if(!e&&stored!==false) lastPushed[kk]=ch[kk]; cb(e||(stored===false?"CLOUD_STORAGE_WRITE_NOT_CONFIRMED":null)); },"Запись облачной записи: "+kk); }; });
   pool(wr,6,function(bad){
     if(bad){ done(false); return; }
     var rm=[], i; for(i=0;i<gone.length;i+=40) rm.push(gone.slice(i,i+40));
-    pool(rm.map(function(g){ return function(cb){ cg(function(f){ cs.removeItems(g,f); },function(e){ if(!e) g.forEach(function(x){ delete lastPushed[x]; }); cb(e); }); }; }),2,function(bad2){
+    pool(rm.map(function(g){ return function(cb){ cg(function(f){ cs.removeItems(g,f); },function(e,removed){ if(!e&&removed!==false) g.forEach(function(x){ delete lastPushed[x]; }); cb(e||(removed===false?"CLOUD_STORAGE_REMOVE_NOT_CONFIRMED":null)); },"Удаление устаревших облачных записей"); }; }),2,function(bad2){
       if(bad2){ done(false); return; }
       var m=String(Date.now());
-      cg(function(f){ cs.setItem("meta",m,f); },function(e){
-        if(e){ done(false); return; }
+      cg(function(f){ cs.setItem("meta",m,f); },function(e,stored){
+        if(e||stored===false){ if(!e) diagFail("Обновление метки синхронизации","CLOUD_STORAGE_WRITE_NOT_CONFIRMED"); done(false); return; }
         lastPushed.meta=m; lastMeta=m; try{ localStorage.setItem("planner:updated",m); }catch(_){}
         done(true,snap);
-      });
+      },"Обновление метки синхронизации");
     });
   });
 }
 function setSync(st){
   var b=$("syncBtn"), n=$("cloudNote"); if(!tgCloud||!b||!n) return;
-  b.textContent={busy:"☁ Синхронизация…",ok:"☁ Синхронизировано",err:"☁ Нет связи"}[st]||"☁ Облако Telegram";
+  b.textContent={busy:"☁ Синхронизация…",ok:"☁ Синхронизировано",err:"☁ Ошибка синхронизации",warn:"☁ Есть предупреждение"}[st]||"☁ Облако Telegram";
   var t="Данные хранятся в облаке Telegram и общие для всех устройств этого аккаунта.";
-  if(st==="ok"&&lastSyncAt) t+=" Последняя синхронизация: "+new Date(lastSyncAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})+".";
-  if(st==="err") t="Нет связи с облаком Telegram. Данные сохранены на устройстве и отправятся, как только связь появится.";
-  if(oversize) t+=" ⚠ Часть записей слишком велика для облака — сократите длинные заметки.";
-  n.textContent=t;
+  if(st==="ok"&&lastSyncAt) t+=" Последняя успешная синхронизация: "+new Date(lastSyncAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})+".";
+  if(st==="err") t="Синхронизация не завершилась. Локальные данные сохранены на устройстве. Откройте диагностику ниже — там будет этап и исходный ответ Telegram.";
+  if(st==="warn"&&oversize) t+=" ⚠ Часть записей превышает лимит размера CloudStorage; они остаются на устройстве.";
+  n.textContent=t; renderSyncDiag();
 }
 function scheduleRetry(){ retryN++; clearTimeout(retryT); retryT=setTimeout(function(){ syncNow("retry",true); },Math.min(60000,4000*Math.pow(2,retryN-1))); }
 /* Один цикл: (при необходимости) прочитать облако → слить → отправить изменения. Пока облако не прочитано, ничего не отправляется. */
@@ -3124,18 +3200,20 @@ function syncNow(why,full){
   if(!tgCloud) return;
   if(syncing){ syncAgain=true; return; }
   syncing=true; syncAgain=false; clearTimeout(pushTimer); pushTimer=null; clearTimeout(retryT);
-  setSync("busy");
+  diagStart(why||"по расписанию"); setSync("busy");
   function fin(ok,snap){
     syncing=false;
-    if(ok){ retryN=0; lastSyncAt=Date.now(); if(snap){ BASE=snap; saveBase(); } setSync("ok"); try{ renderSafety(); }catch(e){} makeBackup("авто"); }
-    else{ setSync("err"); scheduleRetry(); }
+    if(ok){ retryN=0; if(snap){ BASE=snap; saveBase(); } diagSuccess(); setSync(oversize?"warn":"ok"); try{ renderSafety(); }catch(e){} makeBackup("авто"); }
+    else{ if(syncDiag.status!=="error") diagFail(syncDiag.stage||"Завершение синхронизации","Операция завершилась без подтверждения успеха."); setSync("err"); scheduleRetry(); }
     if(syncAgain){ syncAgain=false; setTimeout(function(){ syncNow("again"); },300); }
   }
   function pull(){
     cloudGet(function(e,vals){
       if(e){ fin(false); return; }
       lastPushed=vals; lastMeta=String(vals.meta||""); lastFull=Date.now();
-      var ch=mergeRemote(parseRemote(vals));
+      var ch;
+      try{ ch=mergeRemote(parseRemote(vals)); }
+      catch(err){ diagFail("Объединение локальных и облачных записей",err); fin(false); return; }
       cloudReady=true;
       if(ch){ try{ applyAccent(); renderAll(); }catch(_){} }
       pushDiff(fin);
@@ -3146,7 +3224,7 @@ function syncNow(why,full){
   cg(function(f){ TG.CloudStorage.getItem("meta",f); },function(e,mv){
     if(e){ fin(false); return; }
     if(String(mv||"")!==lastMeta) pull(); else pushDiff(fin);
-  });
+  },"Проверка метки изменений облака");
 }
 function initTelegram(){
   loadScript("https://telegram.org/js/telegram-web-app.js",function(){
@@ -3158,10 +3236,12 @@ function initTelegram(){
       renderHello();
       if(!savedTheme&&w.colorScheme) setTheme(w.colorScheme,false);
       if(w.isVersionAtLeast&&w.isVersionAtLeast("6.9")&&w.CloudStorage){
+        /* Перед первым чтением/слиянием облака сохраняем текущий локальный снимок. */
+        makeBackup("перед обновлением диагностики",0);
         tgCloud=true;
         var b=$("syncBtn"); b.hidden=false; b.disabled=true; b.textContent="☁ Облако Telegram";
-        $("backup").hidden=true; $("cloudNote").hidden=false; $("syncNowBtn").hidden=false;
-        syncNow("start",true);
+        $("backup").hidden=true; $("cloudNote").hidden=false; $("syncNowBtn").hidden=false; $("syncDiagPanel").hidden=false; $("downloadCloudBackupBtn").hidden=false;
+        renderSyncDiag(); syncNow("start",true);
       }
     }
   });
@@ -3182,6 +3262,10 @@ $("exportBtn").addEventListener("click",function(){
   a.download="planner-backup-"+todayKey+".json";
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
+});
+$("downloadCloudBackupBtn").addEventListener("click",function(){
+  makeBackup("перед ручным экспортом",0);
+  $("exportBtn").click();
 });
 $("importBtn").addEventListener("click",function(){ $("importFile").click(); });
 $("importFile").addEventListener("change",function(){
@@ -3212,7 +3296,14 @@ function renderSafety(){
   $("restoreBtn").hidden=!l.length;
   if(!l.length) $("restoreBox").hidden=true;
 }
-$("syncNowBtn").addEventListener("click",function(){ syncNow("manual",true); });
+$("syncNowBtn").addEventListener("click",function(){ syncNow("ручной повтор",true); });
+$("copySyncDiagBtn").addEventListener("click",function(){
+  var report=syncDiagReport(), btn=this;
+  function done(){ btn.textContent="Отчёт скопирован"; setTimeout(function(){ btn.textContent="Скопировать отчёт"; },1800); }
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(report).then(done).catch(function(){ copyFallback(); }); }
+  else copyFallback();
+  function copyFallback(){ var ta=document.createElement("textarea"); ta.value=report; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); try{ document.execCommand("copy"); done(); }catch(e){ alert(report); } ta.remove(); }
+});
 $("restoreBtn").addEventListener("click",function(){
   var l=bakList().slice().reverse(), sel=$("bakSel");
   sel.innerHTML=l.map(function(x){ return '<option value="'+x.t+'">'+esc(fmtT(x.t)+" · "+(x.n||0)+" задач · "+(x.why||"авто"))+'</option>'; }).join("");
@@ -3227,6 +3318,7 @@ $("doRestoreBtn").addEventListener("click",function(){
   $("restoreBox").hidden=true; renderSafety();
 });
 renderSafety();
+renderSyncDiag();
 if(autoRestored) setTimeout(function(){ try{ toast10("♻ Данные восстановлены из автокопии"); }catch(e){} },2500);
 
 renderAll();
