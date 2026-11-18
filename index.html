@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- Планер задач · сборка 23 -->
+<!-- Планер задач · сборка 24 -->
 <html lang="ru">
 <head>
 <script>
 /* Самообновление. Номер сборки ОДИН и тот же здесь и в version.json — при каждом релизе поднимай оба.
    Если на сайте сборка новее, страница перезагружается с ?v=N и обходит кэш Telegram.
    Проверка идёт при запуске и каждый раз, когда мини-апп снова открывают из свёрнутого состояния. */
-window.APP_BUILD=23;
+window.APP_BUILD=24;
 (function(){
   function check(){ try{
     fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
@@ -1037,7 +1037,7 @@ var tgCloud=false, pushTimer=null, lastPushed={}, cloudReady=false, syncing=fals
 var lastMeta="", lastSyncAt=0, lastFull=0, hiddenAt=0, oversize=false;
 /* Диагностика синхронизации хранится отдельно от пользовательских данных и не участвует в слиянии. */
 var SYNC_DIAG_KEY="planner:syncdiag:v1";
-var syncDiag=(function(){ var d={status:"idle",stage:"",errorCode:"",errorText:"",keyCount:null,keyCountAt:0,lastAttempt:0,lastSuccess:0,attempts:0,oversize:false,chunkedValues:0,chunkedParts:0,maxValueChars:0}; try{ var v=JSON.parse(localStorage.getItem(SYNC_DIAG_KEY)||"null"); if(v&&typeof v==="object") return Object.assign(d,v); }catch(e){} return d; })();
+var syncDiag=(function(){ var d={status:"idle",stage:"",errorCode:"",errorText:"",keyCount:null,keyCountAt:0,lastAttempt:0,lastSuccess:0,attempts:0,oversize:false,chunkedValues:0,chunkedParts:0,maxValueChars:0,maxValueBytes:0}; try{ var v=JSON.parse(localStorage.getItem(SYNC_DIAG_KEY)||"null"); if(v&&typeof v==="object") return Object.assign(d,v); }catch(e){} return d; })();
 lastSyncAt=+syncDiag.lastSuccess||0;
 function saveSyncDiag(){ try{ localStorage.setItem(SYNC_DIAG_KEY,JSON.stringify(syncDiag)); }catch(e){} }
 function diagTime(t){ return t?new Date(t).toLocaleString("ru-RU",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—"; }
@@ -1051,14 +1051,14 @@ function renderSyncDiag(){
   $("syncDiagError").textContent=err;
   var kc=syncDiag.keyCount;
   $("syncDiagKeys").textContent=(kc==null?"Ещё не проверено":kc+" / 1024 ("+Math.round(kc/1024*100)+"%)")+(syncDiag.keyCountAt?" · проверено "+diagTime(syncDiag.keyCountAt):"");
-  var cv=+syncDiag.chunkedValues||0, cp=+syncDiag.chunkedParts||0, mv=+syncDiag.maxValueChars||0;
+  var cv=+syncDiag.chunkedValues||0, cp=+syncDiag.chunkedParts||0, mv=+syncDiag.maxValueChars||0, mb=+syncDiag.maxValueBytes||0;
   $("syncDiagChunks").textContent=cv?cv+" записей · "+cp+" частей":"Не требовалось";
-  $("syncDiagMaxValue").textContent=mv?mv.toLocaleString("ru-RU")+" символов до разделения":"—";
+  $("syncDiagMaxValue").textContent=mv?mv.toLocaleString("ru-RU")+" символов · "+mb.toLocaleString("ru-RU")+" байт UTF-8 до разделения":"—";
   $("syncDiagAttempt").textContent=diagTime(syncDiag.lastAttempt);
   $("syncDiagSuccess").textContent=diagTime(syncDiag.lastSuccess);
   var hint="Отчёт содержит только технические сведения и не включает тексты задач или заметок.";
   if(syncDiag.status==="error") hint="Локальные данные остаются на устройстве. Не восстанавливайте автокопию только из-за ошибки связи. Проверьте этап и ответ Telegram ниже.";
-  if(syncDiag.errorCode==="DATA_TOO_LONG") hint+=" Сборка 23 автоматически разделяет длинные значения на безопасные части. После обновления повторите синхронизацию.";
+  if(syncDiag.errorCode==="DATA_TOO_LONG") hint+=" Сборка 24 разбивает данные по размеру UTF-8 и символов, используя запас ниже лимита Telegram. Повторите синхронизацию.";
   if(syncDiag.errorCode&&String(syncDiag.errorCode).indexOf("CLOUD_CHUNK_")===0) hint+=" Обнаружена неполная или повреждённая запись из нескольких частей. Локальные данные не применялись из этой неполной версии.";
   if(syncDiag.status==="warning"&&syncDiag.oversize) hint="Часть данных не помещается в допустимый размер облачной записи. Локальная копия остаётся на устройстве; синхронизация требует отдельного разбора.";
   if(cv) hint+=" Большие значения автоматически разделяются на небольшие части и собираются обратно при чтении.";
@@ -1066,7 +1066,7 @@ function renderSyncDiag(){
   $("syncDiagHint").textContent=hint;
 }
 function diagStart(why){
-  syncDiag.status="busy"; syncDiag.stage="Подготовка синхронизации"+(why?" ("+why+")":""); syncDiag.errorCode=""; syncDiag.errorText=""; syncDiag.lastAttempt=Date.now(); syncDiag.attempts=(+syncDiag.attempts||0)+1; syncDiag.oversize=false; syncDiag.chunkedValues=0; syncDiag.chunkedParts=0; syncDiag.maxValueChars=0; saveSyncDiag(); renderSyncDiag();
+  syncDiag.status="busy"; syncDiag.stage="Подготовка синхронизации"+(why?" ("+why+")":""); syncDiag.errorCode=""; syncDiag.errorText=""; syncDiag.lastAttempt=Date.now(); syncDiag.attempts=(+syncDiag.attempts||0)+1; syncDiag.oversize=false; syncDiag.chunkedValues=0; syncDiag.chunkedParts=0; syncDiag.maxValueChars=0; syncDiag.maxValueBytes=0; saveSyncDiag(); renderSyncDiag();
 }
 function diagStage(stage){ syncDiag.status="busy"; syncDiag.stage=stage||"Обращение к облаку"; saveSyncDiag(); renderSyncDiag(); }
 function diagErrorInfo(e){
@@ -1085,7 +1085,7 @@ function diagFail(stage,e){ var x=diagErrorInfo(e); syncDiag.status="error"; syn
 function diagSuccess(){
   syncDiag.status=oversize?"warning":"ok"; syncDiag.stage=oversize?"Проверка размера облачных записей":"Синхронизация завершена"; syncDiag.errorCode=oversize?"VALUE_TOO_LARGE":""; syncDiag.errorText=oversize?"Одна или несколько записей не были отправлены из-за ограничения размера.":""; syncDiag.lastSuccess=Date.now(); syncDiag.keyCount=Object.keys(lastPushed).length; syncDiag.keyCountAt=syncDiag.lastSuccess; syncDiag.oversize=!!oversize; lastSyncAt=syncDiag.lastSuccess; saveSyncDiag(); renderSyncDiag();
 }
-function syncDiagReport(){ return ["Planer build 23","Состояние: "+(syncDiag.status||"—"),"Этап: "+(syncDiag.stage||"—"),"Код: "+(syncDiag.errorCode||"—"),"Ответ: "+(syncDiag.errorText||"—"),"Ключи облака: "+(syncDiag.keyCount==null?"неизвестно":syncDiag.keyCount+" / 1024"),"Большие значения разделены: "+(+syncDiag.chunkedValues||0)+" (частей: "+(+syncDiag.chunkedParts||0)+")","Максимальное исходное значение: "+(+syncDiag.maxValueChars||0)+" символов","Последняя попытка: "+diagTime(syncDiag.lastAttempt),"Последняя успешная синхронизация: "+diagTime(syncDiag.lastSuccess),"Попыток: "+(+syncDiag.attempts||0)].join("\n"); }
+function syncDiagReport(){ return ["Planer build 24","Состояние: "+(syncDiag.status||"—"),"Этап: "+(syncDiag.stage||"—"),"Код: "+(syncDiag.errorCode||"—"),"Ответ: "+(syncDiag.errorText||"—"),"Ключи облака: "+(syncDiag.keyCount==null?"неизвестно":syncDiag.keyCount+" / 1024"),"Большие значения разделены: "+(+syncDiag.chunkedValues||0)+" (частей: "+(+syncDiag.chunkedParts||0)+")","Максимальное исходное значение: "+(+syncDiag.maxValueChars||0)+" символов / "+(+syncDiag.maxValueBytes||0)+" байт UTF-8","Последняя попытка: "+diagTime(syncDiag.lastAttempt),"Последняя успешная синхронизация: "+diagTime(syncDiag.lastSuccess),"Попыток: "+(+syncDiag.attempts||0)].join("\n"); }
 
 function h53(str){ var h1=0xdeadbeef, h2=0x41c6ce57, i, c;
   for(i=0;i<str.length;i++){ c=str.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); }
@@ -2996,32 +2996,58 @@ function fixG(m,l,r){
   return m;
 }
 
-/* Сборка 23: универсальное разбиение любого большого значения CloudStorage.
-   Telegram ограничивает одно значение 4096 символами. Данные хранятся небольшими частями
-   __p__<ключ>_<хэш>_<номер>, а короткий __m__<ключ> фиксирует завершённую версию.
-   Части записываются первыми, маркер — последним: неполная запись никогда не становится активной. */
-var CLOUD_SAFE_VALUE=3900, CLOUD_PART_SIZE=3000;
+/* Сборка 24: разбиение CloudStorage по двум ограничениям — длине строки и UTF-8.
+   Хотя документация Telegram описывает лимит в символах, используем дополнительный запас
+   по фактическому размеру UTF-8, чтобы длинный кириллический текст и emoji тоже помещались.
+   Каждая часть меньше 4096 и по JS-символам, и по UTF-8 байтам. Маркер пишется последним. */
+var CLOUD_SAFE_BYTES=2800, CLOUD_PART_BYTES=2400;
+function cloudUtf8WidthAt(s,i){
+  var c=s.charCodeAt(i), d;
+  if(c<0x80) return {bytes:1,units:1};
+  if(c<0x800) return {bytes:2,units:1};
+  if(c>=0xD800&&c<=0xDBFF&&i+1<s.length){ d=s.charCodeAt(i+1); if(d>=0xDC00&&d<=0xDFFF) return {bytes:4,units:2}; }
+  return {bytes:3,units:1};
+}
+function cloudUtf8Length(s){
+  var total=0,i=0,w; s=String(s);
+  while(i<s.length){ w=cloudUtf8WidthAt(s,i); total+=w.bytes; i+=w.units; }
+  return total;
+}
+function cloudSplitUtf8(s,maxBytes){
+  var out=[],start=0,i=0,bytes=0,w;
+  s=String(s);
+  while(i<s.length){
+    w=cloudUtf8WidthAt(s,i);
+    if(bytes+w.bytes>maxBytes&&i>start){ out.push(s.slice(start,i)); start=i; bytes=0; continue; }
+    bytes+=w.bytes; i+=w.units;
+  }
+  if(start<s.length) out.push(s.slice(start));
+  return out;
+}
 function cloudMetaKey(k){ return "__m__"+encodeURIComponent(k); }
 function cloudPartKey(k,h,i){ return "__p__"+encodeURIComponent(k)+"_"+h+"_"+i; }
 function cloudPartError(code,msg){ var e=new Error(msg); e.code=code; return e; }
 function cloudEncodeValues(values){
-  var out={}, k, v, h, p, pos, end, part, n, max=0, cv=0, cp=0;
+  var out={}, v, h, part, cv=0, cp=0, maxChars=0, maxBytes=0;
   Object.keys(values).forEach(function(key){
-    v=String(values[key]); max=Math.max(max,v.length);
-    if(v.length<=CLOUD_SAFE_VALUE){ out[key]=v; return; }
-    h=h53(v); pos=0; n=0; part=[];
-    while(pos<v.length){
-      end=Math.min(pos+CLOUD_PART_SIZE,v.length);
-      /* Не разрезаем суррогатную пару Unicode между двумя облачными значениями. */
-      if(end<v.length&&end>pos){ var cc=v.charCodeAt(end-1); if(cc>=0xD800&&cc<=0xDBFF) end--; }
-      if(end<=pos) end=Math.min(pos+CLOUD_PART_SIZE,v.length);
-      part.push(v.slice(pos,end)); pos=end;
+    v=String(values[key]);
+    var bytes=cloudUtf8Length(v); maxChars=Math.max(maxChars,v.length); maxBytes=Math.max(maxBytes,bytes);
+    if(v.length<=CLOUD_SAFE_BYTES&&bytes<=CLOUD_SAFE_BYTES){ out[key]=v; return; }
+    h=h53(v);
+    /* Новый идентификатор раскладки отделяет UTF-8-части от старых частей сборки 23.
+       Маркер переключается только после загрузки всех новых частей. */
+    var layoutTag=h53("utf8-2400|"+v);
+    part=cloudSplitUtf8(v,CLOUD_PART_BYTES);
+    for(var i=0;i<part.length;i++){
+      /* Защитная проверка перед вызовом Telegram CloudStorage. */
+      if(part[i].length>4096||cloudUtf8Length(part[i])>CLOUD_PART_BYTES)
+        throw cloudPartError("CLOUD_CHUNK_TOO_LARGE","Внутренняя проверка размера части не пройдена для записи "+key+".");
+      out[cloudPartKey(key,layoutTag,i)]=part[i];
     }
-    for(var i=0;i<part.length;i++) out[cloudPartKey(key,h,i)]=part[i];
-    out[cloudMetaKey(key)]=JSON.stringify({v:1,n:part.length,len:v.length,hash:h});
+    out[cloudMetaKey(key)]=JSON.stringify({v:1,n:part.length,len:v.length,hash:h,tag:layoutTag});
     cv++; cp+=part.length;
   });
-  syncDiag.chunkedValues=cv; syncDiag.chunkedParts=cp; syncDiag.maxValueChars=max; syncDiag.oversize=false; syncDiag.oversizeKeys=[];
+  syncDiag.chunkedValues=cv; syncDiag.chunkedParts=cp; syncDiag.maxValueChars=maxChars; syncDiag.maxValueBytes=maxBytes; syncDiag.oversize=false; syncDiag.oversizeKeys=[];
   saveSyncDiag();
   return out;
 }
@@ -3037,7 +3063,7 @@ function cloudDecodeValues(raw){
       throw cloudPartError("CLOUD_CHUNK_BAD_META","Повреждено описание частей облачной записи: "+original);
     value="";
     for(i=0;i<meta.n;i++){
-      partKey=cloudPartKey(original,meta.hash,i);
+      partKey=cloudPartKey(original,typeof meta.tag==="string"?meta.tag:meta.hash,i);
       if(!Object.prototype.hasOwnProperty.call(raw,partKey)||typeof raw[partKey]!=="string")
         throw cloudPartError("CLOUD_CHUNK_MISSING","Не найдена часть "+(i+1)+" из "+meta.n+" для записи "+original+". Частичная версия не применена.");
       value+=raw[partKey];
@@ -3049,7 +3075,7 @@ function cloudDecodeValues(raw){
   return out;
 }
 
-/* Telegram CloudStorage: лимит значения — 4096 символов, поэтому дни и заметки пакуются в куски до ~3800.
+/* Telegram CloudStorage: дни и заметки сначала группируются по месяцу, затем при необходимости делятся по UTF-8. 
    Раскладка ключей прежняя (t_/n_/e_/c_/r_/p/s/a/g/xl/meta), добавлены q_<месяц> и qg — метки времени записей. */
 function pack(prefix,map){
   var out={}, ks=Object.keys(map).sort(), curM="", n=0, cur={}, len=2;
