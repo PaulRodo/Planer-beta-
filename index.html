@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- Планер задач · сборка 22 -->
+<!-- Планер задач · сборка 23 -->
 <html lang="ru">
 <head>
 <script>
 /* Самообновление. Номер сборки ОДИН и тот же здесь и в version.json — при каждом релизе поднимай оба.
    Если на сайте сборка новее, страница перезагружается с ?v=N и обходит кэш Telegram.
    Проверка идёт при запуске и каждый раз, когда мини-апп снова открывают из свёрнутого состояния. */
-window.APP_BUILD=22;
+window.APP_BUILD=23;
 (function(){
   function check(){ try{
     fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(j){
@@ -912,6 +912,8 @@ button:active{transform:scale(.97)}
             <span>Этап</span><span id="syncDiagStage">—</span>
             <span>Ответ Telegram</span><span id="syncDiagError">Ошибок пока нет</span>
             <span>Облачные записи</span><span id="syncDiagKeys">Ещё не проверено · лимит 1024</span>
+            <span>Разбитые большие записи</span><span id="syncDiagChunks">—</span>
+            <span>Максимальный размер значения</span><span id="syncDiagMaxValue">—</span>
             <span>Последняя попытка</span><span id="syncDiagAttempt">—</span>
             <span>Последняя успешная</span><span id="syncDiagSuccess">Пока не зафиксирована</span>
           </div>
@@ -1035,7 +1037,7 @@ var tgCloud=false, pushTimer=null, lastPushed={}, cloudReady=false, syncing=fals
 var lastMeta="", lastSyncAt=0, lastFull=0, hiddenAt=0, oversize=false;
 /* Диагностика синхронизации хранится отдельно от пользовательских данных и не участвует в слиянии. */
 var SYNC_DIAG_KEY="planner:syncdiag:v1";
-var syncDiag=(function(){ try{ var v=JSON.parse(localStorage.getItem(SYNC_DIAG_KEY)||"null"); if(v&&typeof v==="object") return Object.assign({status:"idle",stage:"",errorCode:"",errorText:"",keyCount:null,keyCountAt:0,lastAttempt:0,lastSuccess:0,attempts:0,oversize:false},v); }catch(e){} return {status:"idle",stage:"",errorCode:"",errorText:"",keyCount:null,keyCountAt:0,lastAttempt:0,lastSuccess:0,attempts:0,oversize:false}; })();
+var syncDiag=(function(){ var d={status:"idle",stage:"",errorCode:"",errorText:"",keyCount:null,keyCountAt:0,lastAttempt:0,lastSuccess:0,attempts:0,oversize:false,chunkedValues:0,chunkedParts:0,maxValueChars:0}; try{ var v=JSON.parse(localStorage.getItem(SYNC_DIAG_KEY)||"null"); if(v&&typeof v==="object") return Object.assign(d,v); }catch(e){} return d; })();
 lastSyncAt=+syncDiag.lastSuccess||0;
 function saveSyncDiag(){ try{ localStorage.setItem(SYNC_DIAG_KEY,JSON.stringify(syncDiag)); }catch(e){} }
 function diagTime(t){ return t?new Date(t).toLocaleString("ru-RU",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—"; }
@@ -1049,16 +1051,22 @@ function renderSyncDiag(){
   $("syncDiagError").textContent=err;
   var kc=syncDiag.keyCount;
   $("syncDiagKeys").textContent=(kc==null?"Ещё не проверено":kc+" / 1024 ("+Math.round(kc/1024*100)+"%)")+(syncDiag.keyCountAt?" · проверено "+diagTime(syncDiag.keyCountAt):"");
+  var cv=+syncDiag.chunkedValues||0, cp=+syncDiag.chunkedParts||0, mv=+syncDiag.maxValueChars||0;
+  $("syncDiagChunks").textContent=cv?cv+" записей · "+cp+" частей":"Не требовалось";
+  $("syncDiagMaxValue").textContent=mv?mv.toLocaleString("ru-RU")+" символов до разделения":"—";
   $("syncDiagAttempt").textContent=diagTime(syncDiag.lastAttempt);
   $("syncDiagSuccess").textContent=diagTime(syncDiag.lastSuccess);
   var hint="Отчёт содержит только технические сведения и не включает тексты задач или заметок.";
   if(syncDiag.status==="error") hint="Локальные данные остаются на устройстве. Не восстанавливайте автокопию только из-за ошибки связи. Проверьте этап и ответ Telegram ниже.";
+  if(syncDiag.errorCode==="DATA_TOO_LONG") hint+=" Сборка 23 автоматически разделяет длинные значения на безопасные части. После обновления повторите синхронизацию.";
+  if(syncDiag.errorCode&&String(syncDiag.errorCode).indexOf("CLOUD_CHUNK_")===0) hint+=" Обнаружена неполная или повреждённая запись из нескольких частей. Локальные данные не применялись из этой неполной версии.";
   if(syncDiag.status==="warning"&&syncDiag.oversize) hint="Часть данных не помещается в допустимый размер облачной записи. Локальная копия остаётся на устройстве; синхронизация требует отдельного разбора.";
+  if(cv) hint+=" Большие значения автоматически разделяются на небольшие части и собираются обратно при чтении.";
   if(kc!=null&&kc>=820) hint+=" Внимание: облако приближается к лимиту 1024 записи.";
   $("syncDiagHint").textContent=hint;
 }
 function diagStart(why){
-  syncDiag.status="busy"; syncDiag.stage="Подготовка синхронизации"+(why?" ("+why+")":""); syncDiag.errorCode=""; syncDiag.errorText=""; syncDiag.lastAttempt=Date.now(); syncDiag.attempts=(+syncDiag.attempts||0)+1; syncDiag.oversize=false; saveSyncDiag(); renderSyncDiag();
+  syncDiag.status="busy"; syncDiag.stage="Подготовка синхронизации"+(why?" ("+why+")":""); syncDiag.errorCode=""; syncDiag.errorText=""; syncDiag.lastAttempt=Date.now(); syncDiag.attempts=(+syncDiag.attempts||0)+1; syncDiag.oversize=false; syncDiag.chunkedValues=0; syncDiag.chunkedParts=0; syncDiag.maxValueChars=0; saveSyncDiag(); renderSyncDiag();
 }
 function diagStage(stage){ syncDiag.status="busy"; syncDiag.stage=stage||"Обращение к облаку"; saveSyncDiag(); renderSyncDiag(); }
 function diagErrorInfo(e){
@@ -1077,7 +1085,7 @@ function diagFail(stage,e){ var x=diagErrorInfo(e); syncDiag.status="error"; syn
 function diagSuccess(){
   syncDiag.status=oversize?"warning":"ok"; syncDiag.stage=oversize?"Проверка размера облачных записей":"Синхронизация завершена"; syncDiag.errorCode=oversize?"VALUE_TOO_LARGE":""; syncDiag.errorText=oversize?"Одна или несколько записей не были отправлены из-за ограничения размера.":""; syncDiag.lastSuccess=Date.now(); syncDiag.keyCount=Object.keys(lastPushed).length; syncDiag.keyCountAt=syncDiag.lastSuccess; syncDiag.oversize=!!oversize; lastSyncAt=syncDiag.lastSuccess; saveSyncDiag(); renderSyncDiag();
 }
-function syncDiagReport(){ return ["Planer build 22","Состояние: "+(syncDiag.status||"—"),"Этап: "+(syncDiag.stage||"—"),"Код: "+(syncDiag.errorCode||"—"),"Ответ: "+(syncDiag.errorText||"—"),"Ключи облака: "+(syncDiag.keyCount==null?"неизвестно":syncDiag.keyCount+" / 1024"),"Последняя попытка: "+diagTime(syncDiag.lastAttempt),"Последняя успешная синхронизация: "+diagTime(syncDiag.lastSuccess),"Попыток: "+(+syncDiag.attempts||0)].join("\n"); }
+function syncDiagReport(){ return ["Planer build 23","Состояние: "+(syncDiag.status||"—"),"Этап: "+(syncDiag.stage||"—"),"Код: "+(syncDiag.errorCode||"—"),"Ответ: "+(syncDiag.errorText||"—"),"Ключи облака: "+(syncDiag.keyCount==null?"неизвестно":syncDiag.keyCount+" / 1024"),"Большие значения разделены: "+(+syncDiag.chunkedValues||0)+" (частей: "+(+syncDiag.chunkedParts||0)+")","Максимальное исходное значение: "+(+syncDiag.maxValueChars||0)+" символов","Последняя попытка: "+diagTime(syncDiag.lastAttempt),"Последняя успешная синхронизация: "+diagTime(syncDiag.lastSuccess),"Попыток: "+(+syncDiag.attempts||0)].join("\n"); }
 
 function h53(str){ var h1=0xdeadbeef, h2=0x41c6ce57, i, c;
   for(i=0;i<str.length;i++){ c=str.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); }
@@ -2988,6 +2996,59 @@ function fixG(m,l,r){
   return m;
 }
 
+/* Сборка 23: универсальное разбиение любого большого значения CloudStorage.
+   Telegram ограничивает одно значение 4096 символами. Данные хранятся небольшими частями
+   __p__<ключ>_<хэш>_<номер>, а короткий __m__<ключ> фиксирует завершённую версию.
+   Части записываются первыми, маркер — последним: неполная запись никогда не становится активной. */
+var CLOUD_SAFE_VALUE=3900, CLOUD_PART_SIZE=3000;
+function cloudMetaKey(k){ return "__m__"+encodeURIComponent(k); }
+function cloudPartKey(k,h,i){ return "__p__"+encodeURIComponent(k)+"_"+h+"_"+i; }
+function cloudPartError(code,msg){ var e=new Error(msg); e.code=code; return e; }
+function cloudEncodeValues(values){
+  var out={}, k, v, h, p, pos, end, part, n, max=0, cv=0, cp=0;
+  Object.keys(values).forEach(function(key){
+    v=String(values[key]); max=Math.max(max,v.length);
+    if(v.length<=CLOUD_SAFE_VALUE){ out[key]=v; return; }
+    h=h53(v); pos=0; n=0; part=[];
+    while(pos<v.length){
+      end=Math.min(pos+CLOUD_PART_SIZE,v.length);
+      /* Не разрезаем суррогатную пару Unicode между двумя облачными значениями. */
+      if(end<v.length&&end>pos){ var cc=v.charCodeAt(end-1); if(cc>=0xD800&&cc<=0xDBFF) end--; }
+      if(end<=pos) end=Math.min(pos+CLOUD_PART_SIZE,v.length);
+      part.push(v.slice(pos,end)); pos=end;
+    }
+    for(var i=0;i<part.length;i++) out[cloudPartKey(key,h,i)]=part[i];
+    out[cloudMetaKey(key)]=JSON.stringify({v:1,n:part.length,len:v.length,hash:h});
+    cv++; cp+=part.length;
+  });
+  syncDiag.chunkedValues=cv; syncDiag.chunkedParts=cp; syncDiag.maxValueChars=max; syncDiag.oversize=false; syncDiag.oversizeKeys=[];
+  saveSyncDiag();
+  return out;
+}
+function cloudDecodeValues(raw){
+  var out={}, k, encoded, original, meta, value, partKey, i;
+  Object.keys(raw||{}).forEach(function(key){ if(key.indexOf("__p__")!==0&&key.indexOf("__m__")!==0) out[key]=raw[key]; });
+  Object.keys(raw||{}).forEach(function(key){
+    if(key.indexOf("__m__")!==0) return;
+    encoded=key.slice(5);
+    try{ original=decodeURIComponent(encoded); }catch(e){ throw cloudPartError("CLOUD_CHUNK_BAD_KEY","Не удалось прочитать имя большой облачной записи."); }
+    meta=safeParse(raw[key]);
+    if(!meta||meta.v!==1||!Number.isInteger(+meta.n)||+meta.n<1||+meta.n>10000||!Number.isInteger(+meta.len)||+meta.len<1||typeof meta.hash!=="string")
+      throw cloudPartError("CLOUD_CHUNK_BAD_META","Повреждено описание частей облачной записи: "+original);
+    value="";
+    for(i=0;i<meta.n;i++){
+      partKey=cloudPartKey(original,meta.hash,i);
+      if(!Object.prototype.hasOwnProperty.call(raw,partKey)||typeof raw[partKey]!=="string")
+        throw cloudPartError("CLOUD_CHUNK_MISSING","Не найдена часть "+(i+1)+" из "+meta.n+" для записи "+original+". Частичная версия не применена.");
+      value+=raw[partKey];
+    }
+    if(value.length!==meta.len||h53(value)!==meta.hash)
+      throw cloudPartError("CLOUD_CHUNK_CHECKSUM","Проверка целостности не пройдена для записи "+original+". Частичная версия не применена.");
+    out[original]=value;
+  });
+  return out;
+}
+
 /* Telegram CloudStorage: лимит значения — 4096 символов, поэтому дни и заметки пакуются в куски до ~3800.
    Раскладка ключей прежняя (t_/n_/e_/c_/r_/p/s/a/g/xl/meta), добавлены q_<месяц> и qg — метки времени записей. */
 function pack(prefix,map){
@@ -3034,7 +3095,7 @@ function manifestsOut(){
   });
   return out;
 }
-var KNOWNKEY=/^(?:[tne]_\d{4}-\d{2}_\d+|c_.+|r_.+|q_.+|qg|p|s|a|g|xl)$/;
+var KNOWNKEY=/^(?:[tne]_\d{4}-\d{2}_\d+|c_.+|r_.+|q_.+|qg|p|s|a|g|xl|__p__.+|__m__.+)$/;
 
 /* Разбор того, что лежит в облаке, в «записи» с метками времени. */
 function parseRemote(vals){
@@ -3162,26 +3223,60 @@ function cloudGet(cb){
   },"Получение списка ключей облака");
 }
 function pushDiff(done){
-  var snap=records(), cs=TG.CloudStorage, ch=tgChunks(), mf=manifestsOut(), k, todo=[], big=false;
-  for(k in mf) ch[k]=mf[k];
-  var oversizeKeys=[];
-  for(k in ch){ if(ch[k].length>4096){ big=true; oversizeKeys.push(k); delete ch[k]; } }
-  oversize=big; syncDiag.oversize=big; syncDiag.oversizeKeys=oversizeKeys;
+  var snap=records(), cs=TG.CloudStorage, logical=tgChunks(), mf=manifestsOut(), k, ch, todo=[], big=false;
+  for(k in mf) logical[k]=mf[k];
+  try{ ch=cloudEncodeValues(logical); }
+  catch(encErr){ diagFail("Разбиение больших облачных записей",encErr); done(false); return; }
+  oversize=false; syncDiag.oversize=false; syncDiag.oversizeKeys=[];
   for(k in ch) if(lastPushed[k]!==ch[k]) todo.push(k);
   var gone=Object.keys(lastPushed).filter(function(x){ return !(x in ch)&&KNOWNKEY.test(x); });
   if(!todo.length&&!gone.length){ done(true,snap); return; }
-  var wr=todo.map(function(kk){ return function(cb){ cg(function(f){ cs.setItem(kk,ch[kk],f); },function(e,stored){ if(!e&&stored!==false) lastPushed[kk]=ch[kk]; cb(e||(stored===false?"CLOUD_STORAGE_WRITE_NOT_CONFIRMED":null)); },"Запись облачной записи: "+kk); }; });
-  pool(wr,6,function(bad){
-    if(bad){ done(false); return; }
-    var rm=[], i; for(i=0;i<gone.length;i+=40) rm.push(gone.slice(i,i+40));
-    pool(rm.map(function(g){ return function(cb){ cg(function(f){ cs.removeItems(g,f); },function(e,removed){ if(!e&&removed!==false) g.forEach(function(x){ delete lastPushed[x]; }); cb(e||(removed===false?"CLOUD_STORAGE_REMOVE_NOT_CONFIRMED":null)); },"Удаление устаревших облачных записей"); }; }),2,function(bad2){
-      if(bad2){ done(false); return; }
-      var m=String(Date.now());
-      cg(function(f){ cs.setItem("meta",m,f); },function(e,stored){
-        if(e||stored===false){ if(!e) diagFail("Обновление метки синхронизации","CLOUD_STORAGE_WRITE_NOT_CONFIRMED"); done(false); return; }
-        lastPushed.meta=m; lastMeta=m; try{ localStorage.setItem("planner:updated",m); }catch(_){}
-        done(true,snap);
-      },"Обновление метки синхронизации");
+  if((+syncDiag.chunkedValues||0)>0) makeBackup("перед разбиением больших записей CloudStorage",0);
+  var dataTodo=todo.filter(function(x){ return x.indexOf("__m__")!==0; });
+  var metaTodo=todo.filter(function(x){ return x.indexOf("__m__")===0; });
+  function writeKeys(keys,cb){
+    var wr=keys.map(function(kk){ return function(next){
+      var stage="Запись облачной записи: "+kk;
+      if(kk.indexOf("__p__")===0) stage="Запись части большой облачной записи: "+kk;
+      else if(kk.indexOf("__m__")===0) stage="Фиксация собранной облачной записи: "+kk.slice(5);
+      cg(function(f){ cs.setItem(kk,ch[kk],f); },function(e,stored){
+        if(!e&&stored!==false) lastPushed[kk]=ch[kk];
+        next(e||(stored===false?"CLOUD_STORAGE_WRITE_NOT_CONFIRMED":null));
+      },stage);
+    }; });
+    pool(wr,6,function(bad){ cb(!bad); });
+  }
+  function removeKeys(keys,stage,cb){
+    if(!keys.length){ cb(true); return; }
+    var batches=[],i; for(i=0;i<keys.length;i+=40) batches.push(keys.slice(i,i+40));
+    pool(batches.map(function(g){ return function(next){
+      cg(function(f){ cs.removeItems(g,f); },function(e,removed){
+        if(!e&&removed!==false) g.forEach(function(x){ delete lastPushed[x]; });
+        next(e||(removed===false?"CLOUD_STORAGE_REMOVE_NOT_CONFIRMED":null));
+      },stage);
+    }; }),2,function(bad){ cb(!bad); });
+  }
+  /* Сначала обычные значения и новые части. Если часть не записалась, маркер не появится. */
+  writeKeys(dataTodo,function(ok1){
+    if(!ok1){ done(false); return; }
+    /* Маркеры записываются только после всех частей — это точка фиксации новой версии записи. */
+    writeKeys(metaTodo,function(ok2){
+      if(!ok2){ done(false); return; }
+      var goneMeta=gone.filter(function(x){ return x.indexOf("__m__")===0; });
+      var goneRest=gone.filter(function(x){ return x.indexOf("__m__")!==0; });
+      /* Удаляем устаревшие маркеры до их старых частей: читатель не увидит неполную запись. */
+      removeKeys(goneMeta,"Удаление устаревшего маркера большой записи",function(rmMeta){
+        if(!rmMeta){ done(false); return; }
+        removeKeys(goneRest,"Удаление устаревших облачных записей",function(rmRest){
+          if(!rmRest){ done(false); return; }
+          var m=String(Date.now());
+          cg(function(f){ cs.setItem("meta",m,f); },function(e,stored){
+            if(e||stored===false){ if(!e) diagFail("Обновление метки синхронизации","CLOUD_STORAGE_WRITE_NOT_CONFIRMED"); done(false); return; }
+            lastPushed.meta=m; lastMeta=m; try{ localStorage.setItem("planner:updated",m); }catch(_){}
+            done(true,snap);
+          },"Обновление метки синхронизации");
+        });
+      });
     });
   });
 }
@@ -3211,9 +3306,9 @@ function syncNow(why,full){
     cloudGet(function(e,vals){
       if(e){ fin(false); return; }
       lastPushed=vals; lastMeta=String(vals.meta||""); lastFull=Date.now();
-      var ch;
-      try{ ch=mergeRemote(parseRemote(vals)); }
-      catch(err){ diagFail("Объединение локальных и облачных записей",err); fin(false); return; }
+      var ch, logicalVals;
+      try{ logicalVals=cloudDecodeValues(vals); ch=mergeRemote(parseRemote(logicalVals)); }
+      catch(err){ diagFail("Сборка и объединение облачных записей",err); fin(false); return; }
       cloudReady=true;
       if(ch){ try{ applyAccent(); renderAll(); }catch(_){} }
       pushDiff(fin);
